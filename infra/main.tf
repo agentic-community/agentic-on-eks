@@ -68,7 +68,7 @@ locals {
 
   # Project tags for tracking and referencing the GitHub repository.
   tags = {
-    project-repository = "https://gitlab.aws.dev/aratnch/agentic-eks-demo"
+    project-repository = "https://github.com/agentic-community/agentic-on-eks"
   }
 }
 
