@@ -300,13 +300,14 @@ The platform supports intelligent query routing to specialized agents:
 
 💬 "How many vacation days does employee EMP0001 have left?"  
 # → Calculates remaining days based on policy, usage, and carryover
+```
 
 ### 💰 Finance Queries (→ Finance Agent)
 
 ```bash
 💬 "What is the annual salary of employee EMP0003?"
 # → Retrieves salary and compensation details
-
+```
 
 ## 📚 Additional Documentation
 
