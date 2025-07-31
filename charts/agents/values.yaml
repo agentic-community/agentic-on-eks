@@ -1,0 +1,183 @@
+# Best Practices Helm Chart Values
+# This structure allows easy addition of new agents
+
+# Deployment mode: "secure" (with OKTA) or "demo" (no OKTA)
+# Default is "secure" for fail-safe security
+mode: "secure"
+
+# Global configuration shared across all components
+global:
+  aws:
+    region: us-west-2
+    accountId: "${ACCOUNT_ID}"  # Set via environment variable
+
+# Agents configuration - easily extensible
+agents:
+  admin-agent:
+    enabled: true
+    nameOverride: "admin-agent"
+    replicaCount: 1
+    image:
+      repository: "admin-agent"
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    service:
+      type: ClusterIP
+      port: 8080
+      targetPort: 8080
+      name: http
+    env:
+      - name: BEDROCK_MODEL_ID
+        value: "anthropic.claude-3-sonnet-20240229-v1:0"
+      - name: HR_HOST
+        value: "agents-hr-agent-service.default.svc.cluster.local"
+      - name: HR_PORT
+        value: "80"
+      - name: FINANCE_HOST
+        value: "agents-finance-agent-service.default.svc.cluster.local"
+      - name: FINANCE_PORT
+        value: "80"
+    oauth:
+      enabled: false  # Disabled for demo mode
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+
+  hr-agent:
+    enabled: true
+    nameOverride: "hr-agent"
+    replicaCount: 1
+    image:
+      repository: "hr-agent"
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    service:
+      type: ClusterIP
+      port: 80
+      targetPort: 8000
+      name: http
+    env:
+      - name: PORT
+        value: "8000"
+      - name: LOG_LEVEL
+        value: "INFO"
+      - name: SQLITE_DB_PATH
+        value: "/app/data/hr_database.sqlite"
+      - name: MCP_SERVER_PATH
+        value: "/app/mcp_server"
+      - name: PUBLIC_HOLIDAY_SERVER_FNAME
+        value: "nager_mcp_server.py"
+      - name: MEM0_API_KEY
+        value: ""
+    volumes:
+      - name: hr-db-volume
+        emptyDir: {}
+    volumeMounts:
+      - name: hr-db-volume
+        mountPath: /app/data
+    oauth:
+      enabled: false  # Disabled for demo mode
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+
+  finance-agent:
+    enabled: true
+    nameOverride: "finance-agent"
+    replicaCount: 1
+    image:
+      repository: "finance-agent"
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    service:
+      type: ClusterIP
+      port: 80
+      targetPort: 8888
+      name: http
+    env:
+      - name: PORT
+        value: "8888"
+      - name: LOG_LEVEL
+        value: "INFO"
+    oauth:
+      enabled: false  # Disabled for demo mode
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+
+# UI Configuration - integrated directly, no external dependencies
+ui:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: "ui-app"
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8501
+  demoMode:
+    enabled: false  # Disabled by default (secure mode)
+    userEmail: "demo@company.com"
+    userName: "Demo User"
+  oauth:
+    enabled: true  # Enabled by default (secure mode)
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+# OKTA Configuration (required when mode="secure")
+# All sensitive values use environment variables for security
+okta:
+  domain: "${OKTA_DOMAIN}"                      # Set via OKTA_DOMAIN environment variable
+  authServerId: "${OKTA_AUTH_SERVER_ID}"        # Set via OKTA_AUTH_SERVER_ID environment variable
+  audience: "api://a2a-agents"
+  scope: "agent.access"
+  
+  # OAuth client credentials for secure mode - Use environment variables
+  adminAgent:
+    clientId: "${OKTA_ADMIN_CLIENT_ID}"        # Set via OKTA_ADMIN_CLIENT_ID environment variable
+    clientSecret: "${OKTA_ADMIN_CLIENT_SECRET}" # Set via OKTA_ADMIN_CLIENT_SECRET environment variable
+  
+  ui:
+    clientId: "${OKTA_UI_CLIENT_ID}"           # Set via OKTA_UI_CLIENT_ID environment variable
+    clientSecret: "${OKTA_UI_CLIENT_SECRET}"    # Set via OKTA_UI_CLIENT_SECRET environment variable
+    redirectUri: "${OKTA_REDIRECT_URI:-http://localhost:8501}" # Set via OKTA_REDIRECT_URI
+
+# Example of how easy it is to add a new agent:
+# new-agent:
+#   enabled: true
+#   nameOverride: "new-agent"
+#   replicaCount: 1
+#   image:
+#     repository: "new-agent"
+#     tag: "latest"
+#   service:
+#     port: 9000
+#     targetPort: 9000
+#   env:
+#     - name: CUSTOM_CONFIG
+#       value: "value"
+#   oauth:
+#     enabled: false
+#   resources:
+#     requests:
+#       memory: "256Mi"
+#       cpu: "100m"

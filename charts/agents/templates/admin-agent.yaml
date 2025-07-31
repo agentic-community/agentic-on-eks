@@ -1,0 +1,71 @@
+{{- if index .Values.agents "admin-agent" "enabled" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-admin-agent-service
+  labels:
+    app.kubernetes.io/name: admin-agent
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: agent
+spec:
+  type: {{ index .Values.agents "admin-agent" "service" "type" | default "ClusterIP" }}
+  ports:
+  - port: {{ index .Values.agents "admin-agent" "service" "port" }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app.kubernetes.io/name: admin-agent
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-admin-agent
+  labels:
+    app.kubernetes.io/name: admin-agent
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: agent
+spec:
+  replicas: {{ index .Values.agents "admin-agent" "replicaCount" }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: admin-agent
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: admin-agent
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: admin-agent
+        image: "{{ .Values.global.aws.accountId }}.dkr.ecr.{{ .Values.global.aws.region }}.amazonaws.com/{{ index .Values.agents "admin-agent" "image" "repository" }}:{{ index .Values.agents "admin-agent" "image" "tag" }}"
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: {{ index .Values.agents "admin-agent" "service" "targetPort" }}
+          protocol: TCP
+        command: ["python", "__main__.py", "--host", "0.0.0.0", "--port", "8080", "--agentservice", "{{ .Release.Name }}-admin-agent-service.{{ .Release.Namespace }}.svc.cluster.local", "--agentport", "8080"]
+        env:
+        - name: AWS_REGION
+          value: {{ .Values.global.aws.region | quote }}
+        - name: DEMO_MODE
+          value: {{ if eq .Values.mode "demo" }}"true"{{ else }}"false"{{ end }}
+        {{- if eq .Values.mode "secure" }}
+        - name: OKTA_DOMAIN
+          value: {{ .Values.okta.domain | quote }}
+        - name: OKTA_AUTH_SERVER_ID
+          value: {{ .Values.okta.authServerId | quote }}
+        - name: OKTA_CLIENT_ID
+          value: {{ .Values.okta.adminAgent.clientId | quote }}
+        - name: OKTA_CLIENT_SECRET
+          value: {{ .Values.okta.adminAgent.clientSecret | quote }}
+        {{- end }}
+        {{- range index .Values.agents "admin-agent" "env" }}
+        - name: {{ .name }}
+          value: {{ .value | quote }}
+        {{- end }}
+        resources:
+          {{- toYaml (index .Values.agents "admin-agent" "resources") | nindent 10 }}
+{{- end }}

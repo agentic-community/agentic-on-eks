@@ -1,0 +1,1 @@
+# Common utilities for A2A agents

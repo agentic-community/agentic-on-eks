@@ -1,0 +1,28 @@
+[project]
+name = "hr"
+version = "0.1.0"
+description = "HR agent for employee queries and vacation days using CrewAI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "a2a>=0.44",
+    "a2a-sdk>=0.2.5",
+    "a2a-server>=0.1.0",
+    "boto3>=1.28.64",
+    "click>=8.1.8",
+    "crewai>=0.28.8",
+    "fastapi>=0.104.1",
+    "httpx>=0.25.0",
+    "langgraph>=0.4.1",
+    "mcp>=1.6.0",
+    "mcpadapt>=0.1.0",
+    "mem0ai>=0.1.97",
+    "nest-asyncio>=1.5.8",
+    "pydantic>=2.7.2,<3.0.0",
+    "python-dotenv>=1.0.0",
+    "python-jose[cryptography]>=3.3.0",
+    "pyyaml>=6.0.1",
+    "requests>=2.31.0",
+    "starlette>=0.20.0",
+    "uvicorn>=0.23.2",
+]

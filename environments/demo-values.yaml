@@ -1,0 +1,12 @@
+# Demo mode override values
+# Minimal configuration - only overriding what's necessary for demo mode
+
+# Set deployment mode to demo
+mode: "demo"
+
+# UI demo mode configuration
+ui:
+  demoMode:
+    enabled: true
+  oauth:
+    enabled: false
