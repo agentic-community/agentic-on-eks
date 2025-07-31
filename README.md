@@ -5,11 +5,78 @@
 [![AWS](https://img.shields.io/badge/AWS-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
 [![Helm](https://img.shields.io/badge/Helm-0F1689?logo=helm&logoColor=white)](https://helm.sh/)
 
-This project demonstrates a **multi-agent platform** deployed on Amazon EKS that simulates an organizational assistant. It features an **Admin/Supervisor agent** that intelligently routes queries to specialized **HR** and **Finance** agents, showcasing agent-to-agent collaboration using the **Agent-to-Agent (A2A) protocol** with OAuth 2.0 security.
+This project demonstrates a **multi-agent platform** deployed entirely on Amazon EKS that simulates an organizational assistant. It features an **Admin/Supervisor agent** that intelligently routes queries to specialized **HR** and **Finance** agents, showcasing agent-to-agent collaboration using the **Agent-to-Agent (A2A) protocol** with OAuth 2.0 security.
 
-## 🏗️ Architecture Overview
+## 🏗️ Architecture
 
-The platform implements a **microservices architecture** where specialized agents collaborate to handle different business domains with intelligent routing and comprehensive security.
+The platform simulates an organizational assistant for employee services, implementing a multi-agent workflow where specialized agents collaborate to handle HR inquiries, financial queries, and administrative tasks with skill-based routing and built-in security.
+
+### 🤝 Agent-to-Agent (A2A) Protocol Implementation
+
+The platform showcases **Agent-to-Agent (A2A) communication pattern** where:
+- **HR and Finance Agents** act as **A2A servers**, exposing their specialized capabilities through standardized endpoints
+- **Admin Agent** serves as an **A2A client**, discovering agent capabilities and routing user requests
+- **OAuth Security**: All inter-agent communication is secured using OAuth 2.0 client credentials flow (via Okta in secure mode), ensuring authenticated and authorized access
+
+### 📊 Functional Overview
+
+```mermaid
+graph TB
+    subgraph "<b>EKS Cluster</b>"
+        subgraph "Frontend"
+            UI["🖥️ Chatbot<br/>"]
+        end
+        
+        subgraph "Agent Layer"
+            Admin["🎯 Admin Agent<br/>(A2A Client)<br/>"]
+            HR["👥 HR Agent<br/>(A2A Server)<br/>"]
+            Finance["💰 Finance Agent<br/>(A2A Server)<br/>"]
+        end
+        
+        subgraph "Data Layer"
+            HRDB[("📊 HR Database")]
+            FinDB[("💵 Finance Database")]
+        end
+        
+        subgraph "Integration"
+            MCP["🎄 MCP Server<br/>Holiday API"]
+        end
+    end
+    
+    subgraph "External Services"
+        Okta["🔐 Okta<br/>OAuth Provider"]
+        Bedrock["🤖 AWS Bedrock<br/>LLM Provider"]
+        Nager["📅 Nager.Date<br/>Holiday API"]
+    end
+    
+    User["👤 User"] -->|"Login"| UI
+    UI <-->|"OAuth Flow"| Okta
+    UI -->|"Query"| Admin
+    Admin -->|"Route Query"| HR
+    Admin -->|"Route Query"| Finance
+    HR <-->|"Employee Data"| HRDB
+    Finance <-->|"Finance Data"| FinDB
+    HR <-->|"Holiday Data"| MCP
+    MCP <-->|"API Call"| Nager
+    Admin <-->|"LLM Routing"| Bedrock
+    HR <-->|"CrewAI Tasks"| Bedrock
+    Finance <-->|"LangGraph Flow"| Bedrock
+    
+    style UI fill:#4A5568,stroke:#E2E8F0,stroke-width:2px,color:#F7FAFC
+    style Admin fill:#2D3748,stroke:#E2E8F0,stroke-width:2px,color:#F7FAFC
+    style HR fill:#2B6CB0,stroke:#E2E8F0,stroke-width:2px,color:#F7FAFC
+    style Finance fill:#2F855A,stroke:#E2E8F0,stroke-width:2px,color:#F7FAFC
+    style Okta fill:#553C9A,stroke:#E2E8F0,stroke-width:2px,color:#F7FAFC
+    style Bedrock fill:#C05621,stroke:#E2E8F0,stroke-width:2px,color:#F7FAFC
+    style HRDB fill:#1A365D,stroke:#E2E8F0,stroke-width:2px,color:#F7FAFC
+    style FinDB fill:#22543D,stroke:#E2E8F0,stroke-width:2px,color:#F7FAFC
+    style MCP fill:#742A2A,stroke:#E2E8F0,stroke-width:2px,color:#F7FAFC
+    style Nager fill:#744210,stroke:#E2E8F0,stroke-width:2px,color:#F7FAFC
+    style User fill:#1A202C,stroke:#E2E8F0,stroke-width:2px,color:#F7FAFC
+    
+    classDef transparentSubgraph fill:transparent,stroke:#718096,stroke-width:2px,stroke-dasharray:5 5
+    class Frontend,AgentLayer,DataLayer,Integration,External transparentSubgraph
+```
 
 ### 🔧 Components
 
@@ -17,11 +84,10 @@ The platform implements a **microservices architecture** where specialized agent
 - **Framework**: Streamlit web application
 - **Authentication**: Okta OAuth 2.0 authorization code flow
 - **Features**: Interactive chat interface with agent communication
-- **Deployment**: Containerized on Kubernetes
 
 #### 🎯 Admin Agent (Supervisor & Router)
 - **Framework**: A2A SDK + LangChain
-- **AI Model**: AWS Bedrock Claude 3 Sonnet
+- **AI Model**: Uses Amazon Bedrock as Model Provider
 - **Features**:
   - 🧠 LLM-powered intelligent query routing
   - 🔄 Fallback keyword-based routing for reliability
@@ -31,13 +97,12 @@ The platform implements a **microservices architecture** where specialized agent
 
 #### 👥 HR Agent (Employee Assistant)
 - **Framework**: CrewAI + A2A SDK
-- **Database**: SQLite (auto-generated at runtime with 30 sample employees)
+- **Database**: SQLite
 - **Features**:
   - 📋 Employee directory and information management
   - 🏖️ Vacation day calculations with leave policy management
   - 🎄 **MCP Server Integration**: Real-time public holiday data via Nager.Date API
-  - 👥 CrewAI crew-based intelligent task execution
-  - 📊 Dynamic leave balance tracking and policy assignments
+  - 👥 CrewAI crew-based task execution
 
 
 #### 💰 Finance Agent (Financial Assistant)  
@@ -47,22 +112,20 @@ The platform implements a **microservices architecture** where specialized agent
   - 💵 Salary and compensation analysis
   - 📊 Leave deduction calculations with payroll impact
   - 🎯 Performance-based financial computations
-  - 🏢 Department-wise financial reporting
-  - 🧠 Optional Mem0 integration for conversation memory
 
 
-### 🔧 Data & Integration Architecture
 
-#### 🏗️ MCP Server Integration
+### 🔧 Tools Integration with MCP
+
+#### 🏗️ MCP Integration
 The HR Agent leverages **Model Context Protocol (MCP)** for external data integration:
 - **Public Holiday Service**: Real-time holiday data from Nager.Date API
 - **Purpose**: Enhances vacation calculations with accurate holiday information
 - **Integration**: Seamlessly integrated into CrewAI task workflows
 
-#### 🗄️ Database Architecture
+#### 🗄️ Database (SQLite)
 - **HR Database**: Auto-generated at startup with employee records, leave policies, and balance tracking
 - **Finance Database**: Pre-populated with salary, performance, and department data
-- **Data Synchronization**: Both databases share consistent employee IDs for cross-agent queries
 
 ### 🔒 Security Architecture
 
@@ -229,7 +292,7 @@ kubectl port-forward svc/agents-ui-app-service 8501:80
 
 The platform supports intelligent query routing to specialized agents:
 
-### 👥 HR Queries (→ HR Agent)
+### 👥 HR Sample Queries (→ HR Agent)
 
 ```bash
 💬 "What is the name of employee EMP0002?"
@@ -238,36 +301,12 @@ The platform supports intelligent query routing to specialized agents:
 💬 "How many vacation days does employee EMP0001 have left?"  
 # → Calculates remaining days based on policy, usage, and carryover
 
-💬 "What public holidays are there in the US in 2025?"
-# → Fetches real-time holiday data via MCP server integration
-
 ### 💰 Finance Queries (→ Finance Agent)
 
 ```bash
 💬 "What is the annual salary of employee EMP0003?"
 # → Retrieves salary and compensation details
 
-💬 "Calculate leave deduction for EMP0002 for 5 days off"
-# → Computes financial impact of time off on payroll
-
-💬 "Show payroll information for EMP0001"
-# → Combines salary, performance, and department data
-
-💬 "What's the total salary expense for the Engineering department?"
-# → Aggregates financial data by department
-```
-
-### 🎯 Admin Queries (→ Admin Agent)
-
-```bash
-💬 "Who is employee EMP0002 and what's their salary?"
-# → Intelligently routes to both HR and Finance agents
-# → Aggregates responses from multiple agents
-
-💬 "I need help with vacation policy"  
-# → Analyzes intent and routes to HR Agent
-# → Handles ambiguous queries with LLM-powered routing
-```
 
 ## 📚 Additional Documentation
 
@@ -278,5 +317,3 @@ The platform supports intelligent query routing to specialized agents:
 This project is licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
 
 ---
-
-**Made with ❤️ by Agentic Community**
