@@ -365,9 +365,8 @@ kubectl port-forward svc/agents-ui-app-service 8501:80
 
 ## 📚 Additional Documentation
 
-- 📖 [Helm Deployment Guide](HELM_DEPLOYMENT.md)
 - 🔐 [Authentication Setup](docs/auth.md) 
-- 🏗️ [Architecture Details](docs/architecture.md)
+
 
 ## 🛡️ Security Best Practices
 
