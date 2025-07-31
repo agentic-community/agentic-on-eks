@@ -31,88 +31,38 @@ The platform implements a **microservices architecture** where specialized agent
 
 #### 👥 HR Agent (Employee Assistant)
 - **Framework**: CrewAI + A2A SDK
-- **Database**: SQLite for employee data (30 sample employees)
+- **Database**: SQLite (auto-generated at runtime with 30 sample employees)
 - **Features**:
   - 📋 Employee directory and information management
-  - 🏖️ Vacation day calculations and leave policies
-  - 🎄 **MCP Server Integration**: Public holiday data via Nager.Date API
-  - 👥 CrewAI crew-based task execution
-- **Tools & Database Schema**:
-  - `employee_directory_service()`: Fetches employee details by ID
-  - `vacation_days_service()`: Calculates remaining vacation days
-  - `get_public_holidays()`: MCP tool for holiday information
-  - SQLite schema: `employees` table with `employee_id`, `name`, `start_date`, `vacation_days_used`, `total_vacation_days`
+  - 🏖️ Vacation day calculations with leave policy management
+  - 🎄 **MCP Server Integration**: Real-time public holiday data via Nager.Date API
+  - 👥 CrewAI crew-based intelligent task execution
+  - 📊 Dynamic leave balance tracking and policy assignments
 
 
 #### 💰 Finance Agent (Financial Assistant)  
 - **Framework**: LangGraph + A2A SDK
-- **Database**: SQLite for financial data (synchronized with HR data)
+- **Database**: SQLite with pre-populated financial data
 - **Features**:
-  - 💵 Salary calculations and financial analysis
-  - 📊 Leave deduction calculations and payroll processing
-  - 🧠 Optional Mem0 integration for memory management
-- **Tools & Database Schema**:
-  - `get_employee_performance()`: Retrieves performance metrics
-  - `get_employee_financial_data()`: Fetches salary and financial info
-  - `calculate_leave_deduction()`: Computes payroll deductions
-  - SQLite schema: `employees` table with `employee_id`, `name`, `hourly_rate`, `annual_salary`, `performance`, `department`
+  - 💵 Salary and compensation analysis
+  - 📊 Leave deduction calculations with payroll impact
+  - 🎯 Performance-based financial computations
+  - 🏢 Department-wise financial reporting
+  - 🧠 Optional Mem0 integration for conversation memory
 
 
-### 🔧 Tools & Data Architecture
+### 🔧 Data & Integration Architecture
 
 #### 🏗️ MCP Server Integration
-The HR Agent implements **Model Context Protocol (MCP)** servers for external data integration:
+The HR Agent leverages **Model Context Protocol (MCP)** for external data integration:
+- **Public Holiday Service**: Real-time holiday data from Nager.Date API
+- **Purpose**: Enhances vacation calculations with accurate holiday information
+- **Integration**: Seamlessly integrated into CrewAI task workflows
 
-**📅 Public Holiday MCP Server** (`nager_mcp_server.py`)
-- **Purpose**: Fetches real-time public holiday data for vacation calculations
-- **API**: Nager.Date REST API (`https://date.nager.at/api/v3/`)
-- **Tool**: `get_public_holidays(year, country_code)`
-- **Returns**: Holiday summary with dates and names for specified year/country
-- **Usage**: Integrated into CrewAI vacation calculations for accurate leave planning
-
-#### 🗄️ SQLite Database Tools
-
-**👥 HR Agent Database** (`hr_database.sqlite`)
-```sql
--- Employee master data
-CREATE TABLE employees (
-    employee_id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    start_date TEXT NOT NULL,
-    vacation_days_used INTEGER DEFAULT 0,
-    total_vacation_days INTEGER DEFAULT 20
-);
-
--- 30 sample employees auto-generated on startup
--- Path: /app/data/hr_database.sqlite (containerized)
-```
-
-**💰 Finance Agent Database** (`employee.db`)
-```sql
--- Financial and performance data  
-CREATE TABLE employees (
-    employee_id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    hourly_rate REAL NOT NULL,
-    annual_salary REAL NOT NULL,
-    performance TEXT DEFAULT 'Good',
-    department TEXT NOT NULL
-);
-
--- Synchronized employee IDs with HR database
--- Contains salary, performance, and payroll data
-```
-
-#### 🛠️ Agent Tools Overview
-
-| Agent | Tool Name | Function | Data Source |
-|-------|-----------|----------|-------------|
-| **HR** | `employee_directory_service()` | Employee lookup | SQLite HR DB |
-| **HR** | `vacation_days_service()` | Vacation calculations | SQLite HR DB |  
-| **HR** | `get_public_holidays()` | Holiday information | MCP Server → Nager API |
-| **Finance** | `get_employee_performance()` | Performance metrics | SQLite Finance DB |
-| **Finance** | `get_employee_financial_data()` | Salary & financial info | SQLite Finance DB |
-| **Finance** | `calculate_leave_deduction()` | Payroll calculations | SQLite Finance DB |
+#### 🗄️ Database Architecture
+- **HR Database**: Auto-generated at startup with employee records, leave policies, and balance tracking
+- **Finance Database**: Pre-populated with salary, performance, and department data
+- **Data Synchronization**: Both databases share consistent employee IDs for cross-agent queries
 
 ### 🔒 Security Architecture
 
@@ -174,11 +124,11 @@ Build and push all agent container images to ECR:
 # Set your AWS account ID
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-# Build and push all images
+# Build and push all container images
 ./build-images.sh
 ```
 
-### 3️⃣ Deploy the Platform
+### 3️⃣ Deploy All Components
 
 Choose your deployment mode based on your requirements:
 
@@ -222,13 +172,7 @@ Recommended for **production** environments with full OAuth 2.0 authentication.
 - 👤 **User Authentication**: Okta login required
 - 🔑 **Agent-to-Agent Security**: Client credentials flow
 
-### Prerequisites for Secure Mode
 
-1. **Okta Developer Account** with:
-   - Authorization Server configured
-   - Two OAuth applications created:
-     - `All-Agents-App`
-     - `Agent-UI-App`
 
 2. **Required Environment Variables**:
 
@@ -283,102 +227,51 @@ kubectl port-forward svc/agents-ui-app-service 8501:80
 
 ## 🧪 Testing Agent Communication
 
-The platform supports intelligent query routing to appropriate agents:
+The platform supports intelligent query routing to specialized agents:
 
 ### 👥 HR Queries (→ HR Agent)
-The HR Agent uses **CrewAI crews**
 
 ```bash
 💬 "What is the name of employee EMP0002?"
+# → Retrieves employee information from HR database
 
 💬 "How many vacation days does employee EMP0001 have left?"  
-# → Uses: vacation_days_service() → SQLite HR DB + MCP holiday server
+# → Calculates remaining days based on policy, usage, and carryover
 
-💬 "When is the next public holiday in 2025?"
-# → Uses: get_public_holidays(2025, "US") → MCP Server → Nager.Date API
+💬 "What public holidays are there in the US in 2025?"
+# → Fetches real-time holiday data via MCP server integration
 
 ### 💰 Finance Queries (→ Finance Agent)
-The Finance Agent uses **LangGraph workflows** 
 
 ```bash
 💬 "What is the annual salary of employee EMP0003?"
-# → Uses: get_employee_financial_data() → SQLite Finance DB  
+# → Retrieves salary and compensation details
 
 💬 "Calculate leave deduction for EMP0002 for 5 days off"
-# → Uses: calculate_leave_deduction() → Multi-tool workflow
+# → Computes financial impact of time off on payroll
 
 💬 "Show payroll information for EMP0001"
-# → Uses: get_employee_financial_data() + get_employee_performance()
+# → Combines salary, performance, and department data
 
-💬 "Update hourly rate for EMP0001 to $75"  
-# → Uses: calculate_leave_deduction() with update flag
-# → SQL UPDATE on employees table in SQLite database
+💬 "What's the total salary expense for the Engineering department?"
+# → Aggregates financial data by department
 ```
 
 ### 🎯 Admin Queries (→ Admin Agent)
-The Admin Agent uses **LLM-powered routing** with **fallback logic**:
 
 ```bash
-💬 "Route this to HR: employee information"
-# → Identifies HR-related keywords
-# → Routes to HR Agent via A2A protocol
+💬 "Who is employee EMP0002 and what's their salary?"
+# → Intelligently routes to both HR and Finance agents
+# → Aggregates responses from multiple agents
 
-💬 "Send to finance: salary details"  
-# → Identifies finance-related keywords
-# → Routes to Finance Agent with OAuth token
+💬 "I need help with vacation policy"  
+# → Analyzes intent and routes to HR Agent
+# → Handles ambiguous queries with LLM-powered routing
 ```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### 📦 Pod Issues
-```bash
-# Check pod status
-kubectl get pods
-
-# View pod logs
-kubectl logs <pod-name>
-
-# Describe pod for events
-kubectl describe pod <pod-name>
-```
-
-#### 🔐 Authentication Issues
-- **Demo Mode**: Ensure `DEMO_MODE=true` is set
-- **Secure Mode**: Verify all OKTA environment variables
-- **Token Issues**: Check Okta application configuration
-
-#### 🌐 Networking Issues
-```bash
-# Test service connectivity
-kubectl get svc
-
-# Check ingress/port-forwarding
-kubectl port-forward svc/agents-ui-app-service 8501:80
-```
-
-#### 🚀 Image Pull Issues
-- Verify AWS account ID is correct
-- Ensure ECR repositories exist
-- Check IAM permissions for ECR access
 
 ## 📚 Additional Documentation
 
-- 🔐 [Authentication Setup](docs/auth.md) 
-
-
-## 🛡️ Security Best Practices
-
-### Production Deployment Recommendations
-
-- 🔐 **AWS Secrets Manager**: Store sensitive credentials
-- 🌐 **Ingress & TLS**: Use proper domain with HTTPS
-- 🎯 **Fine-grained Scopes**: Implement specific agent permissions
-- ✅ **Input Validation**: Sanitize all user inputs
-- 🛡️ **Bedrock Guardrails**: Enable AWS Bedrock security features
-- 📊 **Monitoring**: Implement logging and observability
-- 🔄 **Backup Strategy**: Regular data backups
+- 🔐 [Authentication Setup](docs/auth.md)
 
 ## 📄 License
 
@@ -386,4 +279,4 @@ This project is licensed under the **Apache License 2.0** - see the [LICENSE](LI
 
 ---
 
-**Made with ❤️ for the Kubernetes and AI community**
+**Made with ❤️ by Agentic Community**

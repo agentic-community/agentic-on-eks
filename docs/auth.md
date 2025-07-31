@@ -1,440 +1,257 @@
-# Authentication Guide for Agentic on EKS Demo 
+# 🔐 OAuth 2.0 Authentication Setup Guide
 
-This document provides a complete guide for setting up OAuth 2.0 authentication with Okta for the Agentic EKS Demo project, covering both UI user authentication and agent-to-agent (A2A) communication.
+This guide walks you through setting up **Okta OAuth 2.0** for the Agentic EKS Platform's **secure mode** deployment. 
 
-## Overview
+> 📖 **For deployment instructions**, see the main [README.md](../README.md#-secure-mode-deployment)
 
-The system implements a comprehensive two-tier authentication architecture:
+## 🎯 Authentication Overview
 
-1. **UI Authentication**: Users authenticate via Okta to access the Streamlit chat interface
-2. **Agent-to-Agent (A2A) Authentication**: Backend agents authenticate with each other using OAuth 2.0 Client Credentials flow
+The platform supports **two deployment modes**:
 
-### Key Features
-- Follows A2A security requirements outlined in the A2A protocol
-- Uses OAuth 2.0 client credentials flow for machine-to-machine authentication
-- Provides proper scope-based authorization
-- Makes authentication information available in agent cards
-- Validates tokens using industry-standard JWT verification
+| Mode | Authentication | Use Case |
+|------|---------------|----------|
+| **🎭 Demo Mode** | None (bypass OAuth) | Development, testing, demos |
+| **🔒 Secure Mode** | Okta OAuth 2.0 | Secure environments |
 
-## Prerequisites
+This guide covers **secure mode setup** with Okta integration.
 
-Before setting up OAuth with Okta, you'll need:
+### 🏗️ OAuth Architecture
 
-1. An Okta developer account (free tier available at [developer.okta.com](https://developer.okta.com))
-2. Administrative access to your Okta account
-3. Python 3.8 or higher
-4. Kubernetes cluster with appropriate RBAC
-5. The following Python packages:
-   - `httpx`
-   - `python-jose[cryptography]`
-   - `starlette`
+```mermaid
+graph TB
+    User --> UI[Streamlit UI]
+    UI --> Okta[Okta Authorization Server]
+    UI --> Admin[Admin Agent]
+    Admin --> |OAuth Token| HR[HR Agent]
+    Admin --> |OAuth Token| Finance[Finance Agent]
+    
+    subgraph "OAuth Apps"
+        UIApp[Agent-UI-App<br/>Authorization Code Flow]
+        A2AApp[All-Agents-App<br/>Client Credentials Flow]
+    end
+    
+    UI -.-> UIApp
+    Admin -.-> A2AApp
+```
 
-## Okta Configuration
+**Two OAuth Applications Required:**
+- **🖥️ Agent-UI-App**: User authentication (Authorization Code Flow)
+- **🤖 All-Agents-App**: Agent-to-agent communication (Client Credentials Flow)
 
-### Step 1: Create an Okta Developer Account
+---
 
-1. Sign up at [developer.okta.com](https://developer.okta.com)
-2. Create your organization (e.g., `trial-XXXXXXX.okta.com`)
-3. Verify your email and access the Admin Console
+## 📋 Prerequisites
+
+Before starting, ensure you have:
+
+- ✅ **Okta Developer Account** (free at [developer.okta.com](https://developer.okta.com))
+- ✅ **Administrative access** to your Okta organization
+- ✅ **EKS cluster** with the platform deployed in demo mode first (for testing)
+
+> 💡 **Tip**: Set up Okta while your platform runs in demo mode, then switch to secure mode
+
+---
+
+## 🛠️ Okta Configuration
+
+### Step 1: Create Okta Developer Account
+
+1. **Sign up** at [developer.okta.com](https://developer.okta.com)
+2. **Create organization** (e.g., `trial-xxxxxxx.okta.com`)
+3. **Verify email** and access the Admin Console
+4. **Note your domain**: `your-domain.okta.com` (needed for deployment)
 
 ### Step 2: Set Up Authorization Server
 
-1. Log in to your Okta Admin Console
-2. Navigate to **Security** > **API**
-3. Select the **Authorization Servers** tab
-4. Click **Add Authorization Server**
-5. Fill in the details:
+1. **Navigate**: Security → API → Authorization Servers
+2. **Add Authorization Server**:
    - **Name**: `A2A-AuthServer`
    - **Description**: `Authorization server for agent-to-agent communication`
    - **Audience**: `api://a2a-agents`
-   - **Issuer**: Use the default value
-6. Click **Save**
+   - **Issuer**: Use default value
+3. **Save** and **note the Server ID** (needed for deployment)
 
-### Step 3: Create Scopes
+### Step 3: Create API Scope
 
-1. Select your newly created authorization server
-2. Go to the **Scopes** tab
-3. Click **Add Scope**
-4. Create the following scope:
-   - `agent.access`: Access to agent API for A2A communication
+1. **Select** your authorization server
+2. **Go to Scopes** tab → **Add Scope**
+3. **Create scope**:
+   - **Name**: `agent.access`
+   - **Description**: `Access to agent APIs for A2A communication`
+   - **Default scope**: ✅ Checked
+4. **Save**
 
-### Step 4: Create Access Policies
+### Step 4: Create Access Policy
 
-1. Go to the **Access Policies** tab
-2. Click **Add Policy**
-3. Fill in the details:
+1. **Go to Access Policies** tab → **Add Policy**
+2. **Policy details**:
    - **Name**: `A2A-Machine-to-Machine`
-   - **Description**: `Policy for machine-to-machine communication`
-   - **Assign to**: Select **All clients**
-4. Click **Create Policy**
-5. Add a rule to this policy:
-   - Click **Add Rule**
-   - **Rule Name**: `Client Credentials`
-   - **Grant type**: Check **Client Credentials**
-   - **Scopes**: Select the scope you created (`agent.access`)
-   - **Token Lifetime**: Set to desired value (default: 1 hour)
-6. Click **Create Rule**
+   - **Description**: `Policy for agent-to-agent authentication`
+   - **Assign to**: All clients
+3. **Create Policy** → **Add Rule**:
+   - **Rule Name**: `Client Credentials Rule`
+   - **Grant type**: ✅ Client Credentials
+   - **Scopes**: ✅ `agent.access`
+   - **Token Lifetime**: 1 hour (recommended)
+4. **Create Rule**
 
-## Application Setup
+---
 
-### Agent-UI-App (UI Authentication)
+## 📱 OAuth Applications Setup
 
-#### Purpose
-Handles user authentication for the Streamlit UI interface.
+### 🖥️ Application 1: Agent-UI-App (User Authentication)
 
-#### Configuration Steps
-1. **Create Application**:
-   - Applications → Create App Integration
-   - OIDC - OpenID Connect → Web Application
-   - Name: `Agent-UI-App`
+**Purpose**: Handles user login to the Streamlit UI
 
-2. **General Settings**:
+#### Creation Steps
+1. **Navigate**: Applications → **Create App Integration**
+2. **Select**: OIDC - OpenID Connect → **Web Application**
+3. **App Settings**:
+   - **Name**: `Agent-UI-App`
    - **Grant types**: ✅ Authorization Code, ✅ Refresh Token
    - **Client authentication**: ✅ Client secret
-   - **Sign-in redirect URIs**: 
-     - `http://localhost:8501` (for port-forward testing)
-     - `https://your-loadbalancer-url` (for production)
-   - **Controlled access**: Allow everyone in your organization
 
-3. **Sign On Settings**:
-   - **OpenID Connect ID Token**: Enabled
-   - **Groups claim type**: Expression
-   - **Groups claim name**: `groups`
+#### Redirect URIs Configuration
+Add these redirect URIs based on your access method:
 
-4. **Credentials**:
-   - Note the **Client ID** (used in deployment)
-   - Note the **Client Secret** (used in deployment)
+```bash
+# For local port-forward testing
+http://localhost:8501
 
-### All-Agents-App (A2A Authentication)
+# For LoadBalancer/Ingress (production)
+https://your-domain.com
 
-#### Purpose
-Handles machine-to-machine authentication between backend agents.
+```
 
-#### Configuration Steps
-1. **Create Application**:
-   - Applications → Create App Integration
-   - API Services → Machine-to-Machine
-   - Name: `All-Agents-App`
+#### Credentials
+- **📋 Copy Client ID**: `0oaxxxxxxxxx` (save for deployment)
+- **📋 Copy Client Secret**: `xxxxxxxxxxxxx` (save for deployment)
 
-2. **General Settings**:
-   - **Grant types**: ✅ Client Credentials
+### 🤖 Application 2: All-Agents-App (Agent-to-Agent Auth)
+
+**Purpose**: Handles authentication between backend agents
+
+#### Creation Steps
+1. **Navigate**: Applications → **Create App Integration**
+2. **Select**: API Services → **Machine-to-Machine**
+3. **App Settings**:
+   - **Name**: `All-Agents-App`
+   - **Grant types**: ✅ Client Credentials only
    - **Client authentication**: ✅ Client secret
 
-3. **Credentials**:
-   - Note the **Client ID** (used by Admin Agent)
-   - Note the **Client Secret** (used by Admin Agent)
+#### Scope Assignment
+1. **Go to Okta API Scopes** tab
+2. **Grant access** to `agent.access` scope
+3. **Verify** the scope appears in granted scopes list
 
-4. **Scope Assignment**:
-   - Go to the **Okta API Scopes** tab
-   - Grant the application access to the `agent.access` scope
+#### Credentials
+- **📋 Copy Client ID**: `0oaxxxxxxxxx` (save for deployment)
+- **📋 Copy Client Secret**: `xxxxxxxxxxxxx` (save for deployment)
 
-## Authentication Flows
+---
 
-### UI Authentication Flow
+## 🔑 Environment Variables Setup
 
-1. **User Access**: User visits UI application
-2. **Login Required**: UI redirects to Okta login page
-3. **Okta Authentication**: User enters credentials
-4. **Authorization Code**: Okta redirects back with auth code
-5. **Token Exchange**: UI exchanges code for ID token and access token
-6. **Session Creation**: UI creates authenticated session
-7. **Chat Access**: User can now interact with agents
-
-### A2A Authentication Flow
-
-1. **Service Request**: Admin Agent needs to call HR/Finance agent
-2. **Token Acquisition**: Admin Agent requests token from A2A-AuthServer
-3. **Client Credentials**: Uses All-Agents-App credentials
-4. **Access Token**: Receives JWT token with appropriate scopes
-5. **Authenticated Request**: Includes token in Authorization header
-6. **Token Validation**: Target agent validates token against Okta
-7. **Service Response**: Returns authenticated response
-
-## Deployment Configuration
-
-### OAuth Configuration During Deployment
-
-The current implementation uses interactive prompts during deployment. Each agent's `deploy.sh` script will prompt for the necessary OAuth credentials:
-
-**Admin Agent Deployment** will prompt for:
-- `OKTA_DOMAIN` (e.g., trial-xxxxxxx.okta.com)
-- `OKTA_AUTH_SERVER_ID` (your authorization server ID)
-- `OKTA_CLIENT_ID` (from All-Agents-App)
-- `OKTA_CLIENT_SECRET` (from All-Agents-App)
-
-**HR Agent Deployment** will prompt for:
-- `OKTA_DOMAIN` (e.g., trial-xxxxxxx.okta.com)
-- `OKTA_AUTH_SERVER_ID` (your authorization server ID)
-
-**Finance Agent Deployment** will prompt for:
-- `OKTA_DOMAIN` (e.g., trial-xxxxxxx.okta.com)
-- `OKTA_AUTH_SERVER_ID` (your authorization server ID)
-
-**UI App Deployment** will prompt for:
-- `OKTA_DOMAIN` (e.g., trial-xxxxxxx.okta.com)
-- `OKTA_CLIENT_ID` (from Agent-UI-App)
-- `OKTA_CLIENT_SECRET` (from Agent-UI-App)
-
-### Kubernetes Integration
-
-#### Secret Management
-The system uses Kubernetes Secrets to securely store Okta credentials:
-
-```yaml
-# Admin Agent OAuth Secret
-apiVersion: v1
-kind: Secret
-metadata:
-  name: admin-agent-oauth-secrets
-  namespace: default
-type: Opaque
-data:
-  OKTA_DOMAIN: BASE64_ENCODED_DOMAIN
-  OKTA_AUTH_SERVER_ID: BASE64_ENCODED_AUTH_SERVER_ID
-  OKTA_CLIENT_ID: BASE64_ENCODED_CLIENT_ID
-  OKTA_CLIENT_SECRET: BASE64_ENCODED_CLIENT_SECRET
-  OKTA_SCOPE: # base64 for "agent.access"
-  OKTA_AUDIENCE: # base64 for "api://a2a-agents"
-```
-
-```yaml
-# UI OKTA credentials stored in Secret
-apiVersion: v1
-kind: Secret
-metadata:
-  name: ui-app-okta-secrets
-stringData:
-  OKTA_DOMAIN: "your-domain.okta.com"
-  OKTA_CLIENT_ID: "your-ui-client-id"
-  OKTA_CLIENT_SECRET: "your-ui-client-secret"
-```
-
-#### Configuration Management
-Non-sensitive configuration stored in ConfigMap:
-
-```yaml
-# UI configuration in ConfigMap
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ui-app-config
-data:
-  OKTA_REDIRECT_URI: "http://localhost:8501"
-  OKTA_SCOPE: "openid profile email"
-  DEMO_MODE: "false"
-```
-
-## Implementation Details
-
-### 1. OAuth Client (`common/utils/oauth_auth.py`)
-
-The OAuth client is responsible for acquiring tokens from Okta:
-
-```python
-# Example usage
-from common.utils.oauth_auth import OAuthClient, OAuthConfig
-
-config = OAuthConfig(
-    domain="your-okta-domain",
-    client_id="your-client-id",
-    client_secret="your-client-secret",
-    scope="agent.access",
-    audience="api://a2a-agents",
-    token_endpoint="https://<domain>/oauth2/your-auth-server-id/v1/token"
-)
-
-client = OAuthClient(config)
-token = await client.get_token()
-```
-
-### 2. OAuth Middleware (`common/server/oauth_middleware.py`)
-
-The middleware validates incoming requests:
-
-```python
-# Example usage in server.py
-from common.server.oauth_middleware import configure_oauth_middleware
-
-# Configure the app with OAuth middleware
-app = configure_oauth_middleware(app, public_paths=["/.well-known/agent.json"])
-```
-
-### 3. Key Security Features
-
-- **Public paths exempted**: `/.well-known/agent.json`, `/docs`, `/health`
-- **Token validation**: JWT signature validation using Okta's public keys
-- **Scope validation**: Requires `agent.access` scope for A2A communication
-- **Proper error responses**: 401 for invalid/missing tokens, 403 for insufficient scopes
-
-## Deployment Steps
-
-### Prerequisites
-- Okta Developer account configured as above
-- Kubernetes cluster with appropriate RBAC
-- ECR repository for container images
-
-### Step-by-Step Deployment
-
-1. **Deploy Admin Agent**:
-   ```bash
-   cd agents/admin
-   ./deploy.sh
-   ```
-
-2. **Deploy HR Agent**:
-   ```bash
-   cd agents/hr
-   ./deploy.sh
-   ```
-
-3. **Deploy Finance Agent**:
-   ```bash
-   cd agents/finance
-   ./deploy.sh
-   ```
-
-4. **Deploy UI application**:
-   ```bash
-   cd ui
-   ./deploy.sh
-   ```
-
-5. **Access application**:
-   ```bash
-   kubectl port-forward svc/ui-app-service 8501:80
-   # Visit: http://localhost:8501
-   ```
-
-## Testing
-
-### UI Authentication Test
-1. Access `http://localhost:8501`
-2. Click "Login with Okta"
-3. Enter Okta credentials
-4. Verify redirect to chat interface
-5. Confirm user info displayed in sidebar
-
-### End-to-End Agent Communication Test
-1. **HR Query**: "What is the name of employee EMP0002?"
-2. **Finance Query**: "What is the annual salary of EMP0003?"
-3. **Verify**: Responses from appropriate backend agents
-
-### Demo Mode
-For testing without Okta authentication:
-```bash
-kubectl patch configmap ui-app-config -p '{"data":{"DEMO_MODE":"true"}}'
-kubectl rollout restart deployment/ui-app-deployment
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### Token Acquisition Failures
-- Check that your client ID and client secret are correct
-- Verify that the All-Agents-App has been granted the `agent.access` scope
-- Ensure the authorization server is properly configured
-
-#### Token Validation Failures
-- Check that the Issuer URL is correct
-- Verify that the audience matches what's configured in Okta (`api://a2a-agents`)
-- Ensure the token is not expired
-- Look for scopes in both `scope` and `scp` fields
-
-#### Scope Validation Issues
-The current implementation requires the `agent.access` scope. Ensure:
-- The All-Agents-App has been granted this scope in Okta
-- The authorization server policy includes this scope
-- The token contains this scope in either `scope` or `scp` fields
-
-### Debugging Commands
+After creating both Okta applications, you'll need these environment variables for **secure mode deployment**:
 
 ```bash
-# Check UI pod logs
-kubectl logs -l app=ui-app -f
+# AWS Configuration
+export ACCOUNT_ID=your-aws-account-id
 
-# Check agent OAuth logs
-kubectl logs -l app=admin-agent -f  # Token acquisition
-kubectl logs -l app=hr-agent -f     # Token validation
-kubectl logs -l app=finance-agent -f # Token validation
+# Okta Domain & Auth Server
+export OKTA_DOMAIN=your-domain.okta.com
+export OKTA_AUTH_SERVER_ID=your-auth-server-id
 
-# Check secrets
-kubectl get secret ui-app-okta-secrets -o yaml
-kubectl get secret admin-agent-oauth-secrets -o yaml
-kubectl get secret hr-agent-oauth-secrets -o yaml
-kubectl get secret finance-agent-oauth-secrets -o yaml
+# All-Agents-App Credentials (for Admin Agent)
+export OKTA_ADMIN_CLIENT_ID=0oaxxxxxxxxx
+export OKTA_ADMIN_CLIENT_SECRET=xxxxxxxxxxxxx
 
-# Check configuration
-kubectl get configmap ui-app-config -o yaml
+# Agent-UI-App Credentials (for UI)
+export OKTA_UI_CLIENT_ID=0oaxxxxxxxxx
+export OKTA_UI_CLIENT_SECRET=xxxxxxxxxxxxx
 
-# Test pod connectivity
-kubectl exec -it <ui-pod> -- wget -qO- http://admin-agent-service:8080/.well-known/agent.json
-
-# Test OAuth validation (should fail without token)
-kubectl exec -it <admin-pod> -- curl -X POST http://hr-agent-service/ -H "Content-Type: application/json"
-
-# Test OAuth validation (should work with valid token)
-kubectl exec -it <admin-pod> -- curl -X POST http://hr-agent-service/ -H "Authorization: Bearer <valid-token>"
+# Optional: Custom redirect URI
+export OKTA_REDIRECT_URI=http://localhost:8501
 ```
 
-## Security Considerations
+> 🔗 **Next Step**: Deploy in secure mode using [these instructions](../README.md#deploy-in-secure-mode)
 
-### Credentials Management
-- ✅ **No hardcoded secrets**: All credentials via environment variables or prompts
-- ✅ **Kubernetes Secrets**: Sensitive data encrypted at rest
-- ✅ **Session security**: Proper session management with Okta tokens
-- ✅ **Token validation**: All A2A calls validate OAuth tokens
+---
 
-### Network Security
-- ✅ **Internal LoadBalancer**: UI not exposed to internet
-- ✅ **Cluster networking**: All agent communication within cluster
+## 🧪 Testing Your OAuth Setup
 
-### Additional Security Best Practices
-- **Secret Management**: Store client secrets securely in Kubernetes Secrets or environment variables
-- **Token Lifetimes**: Configure appropriate token lifetimes (shorter is more secure)
-- **Scope Design**: The `agent.access` scope provides broad access - consider more granular scopes for production
-- **Network Security**: Use TLS for all communications
-- **Audit Logging**: Monitor and log authentication events
+### 1. Deploy in Secure Mode
+```bash
+# Set all environment variables above, then:
+./deploy-helm.sh -m secure
+```
 
-## Implementation Summary
+### 2. Test UI Authentication
+```bash
+# Port-forward the UI service
+kubectl port-forward svc/agents-ui-app-service 8501:80
 
-### ✅ OAuth A2A Flow Successfully Implemented
+# Access the UI
+open http://localhost:8501
+```
 
-The system now features a complete OAuth 2.0 authentication implementation with the following components:
+**Expected Flow**:
+1. 🌐 Browser redirects to Okta login
+2. 🔐 Enter your Okta credentials  
+3. ✅ Successful redirect back to UI
+4. 💬 Chat interface becomes available
+5. 👤 User info displayed in sidebar
 
-#### Complete Security Flow
-- **UI → Okta**: User authentication with OAuth2 authorization code flow
-- **Admin Agent → Okta**: Client credentials flow to get access tokens  
-- **Admin Agent → HR/Finance**: Bearer token authentication via A2A protocol
-- **HR/Finance Agents**: JWT token validation using Okta JWKS
+### 3. Test Agent-to-Agent Communication
+Try these queries to verify OAuth between agents:
 
-#### Key Components Implemented
+```bash
+💬 "What is the name of employee EMP0002?"
+# → Should route to HR Agent with OAuth token
 
-1. **OAuth Middleware** (`common/server/oauth_middleware.py`)
-   - HTTP request interception and Bearer token extraction
-   - JWT token validation against Okta JWKS endpoints
-   - Scope-based authorization with proper error responses
+💬 "What is the annual salary of employee EMP0003?"  
+# → Should route to Finance Agent with OAuth token
+```
 
-2. **JWT Validation Utilities** (`common/utils/oauth_auth.py`)
-   - Okta configuration management from environment variables
-   - JWT signature validation using Okta's public keys  
-   - Token claims extraction and validation
+**Check logs** for successful OAuth token validation:
+```bash
+kubectl logs -l app.kubernetes.io/instance=agents | grep -i oauth
+```
+---
 
-3. **Agent Integration**
-   - OAuth middleware enabled on HR and Finance agents
-   - Token validation with `agent.access` scope requirement
-   - Admin Agent OAuth client for A2A communication
 
-#### Test Results
-- ✅ **Valid OAuth credentials**: Admin Agent gets tokens, HR/Finance accept requests
-- ❌ **Invalid OAuth credentials**: Admin Agent fails to get tokens, HR/Finance reject requests with 401
-- ✅ **Public endpoints**: Accessible without authentication (agent discovery)
-- ✅ **Protected endpoints**: Require valid Bearer tokens
+## 🔒 Security Best Practices
 
-#### Architecture Benefits
-- **Separation of concerns**: OAuth logic separated from HTTP handling
-- **Framework independence**: Could switch OAuth providers easily
-- **Reusability**: OAuth utilities can be used in different contexts
-- **Testability**: OAuth logic can be tested independently
+### Production Deployment Recommendations
 
-The OAuth authentication implementation provides comprehensive security with industry-standard OAuth2 and JWT validation, making the system production-ready for enterprise deployment.
+- **✅ Use Kubernetes Secrets**: Store credentials in encrypted secrets, not environment variables
+- **✅ Rotate Credentials**: Regularly rotate client secrets and tokens
+- **✅ Limit Scope Access**: Only grant necessary scopes to applications
+- **✅ Monitor Token Usage**: Set up alerts for failed authentication attempts
+- **✅ Use HTTPS**: Always use TLS for production redirect URIs
+- **✅ Network Policies**: Restrict network access between pods
+
+### Additional Security Measures
+
+- 🔐 **AWS Secrets Manager**: Store sensitive credentials
+- 🌐 **Ingress & TLS**: Use proper domain with HTTPS
+- 🎯 **Fine-grained Scopes**: Implement specific agent permissions
+- ✅ **Input Validation**: Sanitize all user inputs
+- 🛡️ **Bedrock Guardrails**: If using AWS Bedrock for model access, make sure. to implement AWS Bedrock security [guardrails](https://aws.amazon.com/bedrock/guardrails/).
+- 📊 **Monitoring**: Implement logging and observability
+- 🔄 **Token Refresh**: Implement token refresh for long-running sessions
+
+---
+
+## 📚 Additional Resources
+
+- **🏠 [Project Documentation](../README.md)** - Platform overview and deployment
+- **🔗 [Okta Developer Docs](https://developer.okta.com/docs/)** - Official Okta documentation
+- **🔧 [A2A Protocol Specification](https://github.com/ModelContextProtocol/servers)** - Agent-to-Agent protocol details
+
+---
+
+**⚡ Quick Links:**
+- 🎭 [Demo Mode Deployment](../README.md#-demo-mode-deployment) - Test without OAuth
+- 🔒 [Secure Mode Deployment](../README.md#-secure-mode-deployment) - Production with OAuth  
+- 🧪 [Testing Guide](../README.md#-testing-agent-communication) - Query examples and workflows
