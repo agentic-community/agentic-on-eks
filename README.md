@@ -18,7 +18,7 @@ The platform showcases **Agent-to-Agent (A2A) communication pattern** where:
 - **Admin Agent** serves as an **A2A client**, discovering agent capabilities and routing user requests
 - **OAuth Security**: All inter-agent communication is secured using OAuth 2.0 client credentials flow (via Okta in secure mode), ensuring authenticated and authorized access
 
-### 📊 Functional Overview
+### 📊 System Overview
 
 ```mermaid
 graph TB
