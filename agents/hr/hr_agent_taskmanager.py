@@ -54,7 +54,7 @@ class HRAgentTaskManager(DefaultRequestHandler):
                 messageId=str(uuid.uuid4()),
                 role=Role.agent,
                 parts=[Part(root=TextPart(kind='text', text=result if result else "Sorry, no result"))],
-                contextId=params.message.contextId
+                contextId=getattr(params.message, 'contextId', None)
             )
             
             logger.info(f"HR agent processed query successfully: {query[:50]}...")
@@ -69,7 +69,7 @@ class HRAgentTaskManager(DefaultRequestHandler):
                 messageId=str(uuid.uuid4()),
                 role=Role.agent,
                 parts=[Part(root=TextPart(kind='text', text=f"Error processing request: {str(e)}"))],
-                contextId=params.message.contextId
+                contextId=getattr(params.message, 'contextId', None)
             )
             
             return error_message

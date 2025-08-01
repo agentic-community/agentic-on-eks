@@ -1,6 +1,6 @@
 module "eks" {
   source          = "terraform-aws-modules/eks/aws"
-  version         = "~> 19.15"
+  version         = "~> 20.0"
   cluster_name    = var.cluster_name
   cluster_version = "1.31"
 
@@ -11,7 +11,10 @@ module "eks" {
     vpc-cni                = {}
   }
 
-  manage_aws_auth_configmap = true
+  # Access entries for cluster access control
+  # Note: The cluster creator access entry is automatically created by EKS
+  # when authentication_mode is set to API_AND_CONFIG_MAP
+  access_entries = {}
 
   # Enable public access to the Kubernetes API server
   cluster_endpoint_public_access = true
@@ -76,12 +79,12 @@ module "eks" {
 }
 
 resource "aws_iam_policy" "alb_controller_policy" {
-  name   = "AWSLoadBalancerControllerIAMPolicy"
+  name   = "${var.cluster_name}-AWSLoadBalancerControllerIAMPolicy"
   policy = file("${path.module}/iam_policy_alb_controller.json")
 }
 
 resource "aws_iam_role" "alb_controller_role" {
-  name               = "aws-lbc-sa-role"
+  name               = "${var.cluster_name}-aws-lbc-sa-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
@@ -151,7 +154,7 @@ resource "helm_release" "aws_load_balancer_controller" {
 }
 # Create IAM policy for Bedrock access
 resource "aws_iam_policy" "bedrock_policy" {
-  name        = "EKSNodeBedrockPolicy"
+  name        = "${var.cluster_name}-EKSNodeBedrockPolicy"
   description = "IAM policy for EKS nodes to access AWS Bedrock"
   policy      = file("${path.module}/iam_policy_bedrock.json")
 }

@@ -1,0 +1,15 @@
+# Example terraform.tfvars file
+# Copy this file to terraform.tfvars and update the values as needed
+
+# AWS region where resources will be created
+# Default: "us-west-2"
+region = "us-west-2"
+
+# Name for the EKS cluster
+# Default: "agents-on-eks"
+cluster_name = "my-agentic-cluster"
+
+# API key for Mem0 external memory service
+# This is a sensitive value - keep it secure
+# Obtain your API key from: https://mem0.ai
+mem0_api_key = ""
