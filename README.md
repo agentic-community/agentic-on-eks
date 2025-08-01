@@ -184,6 +184,7 @@ terraform apply
 Build and push all agent container images to ECR:
 
 ```bash
+cd ..
 # Set your AWS account ID
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
