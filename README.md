@@ -175,21 +175,26 @@ cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with your values
 
 # Deploy infrastructure
-terraform init
-terraform apply
+./install.sh
 ```
 
 ### 2️⃣ Build Container Images
 
-Build and push all agent container images to ECR:
+Build and push agent container images to ECR:
 
 ```bash
 cd ..
 # Set your AWS account ID
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-# Build and push all container images
+# Build all container images
 ./build-images.sh
+
+# Or build specific components only
+./build-images.sh ui              # Build only UI component
+./build-images.sh admin hr        # Build admin and HR components
+
+# Available components: admin, hr, finance, ui
 ```
 
 ### 3️⃣ Deploy All Components

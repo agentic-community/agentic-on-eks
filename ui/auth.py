@@ -304,12 +304,6 @@ def show_user_info():
             st.sidebar.markdown("---")
             st.sidebar.markdown("### 👤 User Info")
             
-            # Show demo mode indicator
-            if is_demo_mode():
-                st.sidebar.markdown("🧪 **Demo Mode Active**")
-                st.sidebar.markdown("*Authentication bypassed for testing*")
-            
-            st.sidebar.markdown(f"**Email:** {user_info.get('email', 'N/A')}")
             st.sidebar.markdown(f"**Name:** {user_info.get('name', 'N/A')}")
             
             # Only show logout in non-demo mode

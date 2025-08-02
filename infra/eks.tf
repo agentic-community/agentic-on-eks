@@ -1,8 +1,8 @@
 module "eks" {
   source          = "terraform-aws-modules/eks/aws"
-  version         = "~> 20.0"
+  version         = "~> 20.34"
   cluster_name    = var.cluster_name
-  cluster_version = "1.31"
+  cluster_version = "1.33"
 
   cluster_addons = {
     coredns                = {}
@@ -16,11 +16,11 @@ module "eks" {
   # when authentication_mode is set to API_AND_CONFIG_MAP
   access_entries = {}
 
-  # Enable public access to the Kubernetes API server
+  #WARNING: Avoid using this option (cluster_endpoint_public_access = true) in preprod or prod accounts. This feature is designed for sandbox accounts, simplifying cluster deployment and testing.
   cluster_endpoint_public_access = true
   
-  # Configure cluster access for kubectl
-  cluster_endpoint_private_access = true
+  authentication_mode                      = "API_AND_CONFIG_MAP"
+  enable_cluster_creator_admin_permissions = true
   
   # Ensure the security group allows access to the Kubernetes API
   create_cluster_security_group = true
@@ -44,30 +44,6 @@ module "eks" {
         AmazonBedrockFullAccess = "arn:aws:iam::aws:policy/AmazonBedrockFullAccess"
         AmazonSSMReadOnlyAccess = "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
         BedrockCustomPolicy     = aws_iam_policy.bedrock_policy.arn
-      }
-    }
-    
-    gpu_nodes = {
-      instance_types = ["g5.8xlarge"]
-      desired_size   = 0
-      min_size       = 0
-      max_size       = 5
-      ami_type       = "AL2_x86_64_GPU"
-      capacity_type  = "ON_DEMAND"
-      
-      # Add labels to identify GPU nodes
-      labels = {
-        "node.kubernetes.io/instance-type" = "g5.8xlarge"
-        "nvidia.com/gpu"                   = "true"
-      }
-      
-      # Add taints to ensure only GPU workloads are scheduled on these nodes
-      taints = {
-        gpu = {
-          key    = "nvidia.com/gpu"
-          value  = "true"
-          effect = "NO_SCHEDULE"
-        }
       }
     }
   }
