@@ -19,12 +19,7 @@ provider "kubernetes" {
   # The EKS cluster API endpoint and certificate are retrieved from the EKS module.
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  token                  = data.aws_eks_cluster_auth.cluster.token
-}
-
-# AWS EKS cluster authentication data source
-data "aws_eks_cluster_auth" "cluster" {
-  name = module.eks.cluster_name
+  token                  = data.aws_eks_cluster_auth.cluster.token  
 }
 
 # ---------------------------------------------------------------
@@ -36,7 +31,7 @@ provider "helm" {
     # The EKS cluster API endpoint and certificate are retrieved from the EKS module.
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-    token                  = data.aws_eks_cluster_auth.cluster.token
+    token                  = data.aws_eks_cluster_auth.cluster.token    
   }
 }
 
@@ -61,6 +56,12 @@ locals {
 # ---------------------------------------------------------------
 # AWS Data Sources
 # ---------------------------------------------------------------
+
+# AWS EKS cluster authentication data source
+data "aws_eks_cluster_auth" "cluster" {
+  name = module.eks.cluster_name
+}
+
 # Retrieves an authorization token for public ECR registry to authenticate image pulls.
 data "aws_ecrpublic_authorization_token" "token" {
   provider = aws.ecr

@@ -5,10 +5,12 @@ This UI communicates only with the Admin Agent which handles routing to HR/Finan
 
 import asyncio
 import os
+import re
 from datetime import datetime
 from uuid import uuid4
 import httpx
 import streamlit as st
+import time
 
 # Import authentication module
 from auth import require_auth, show_user_info, is_authenticated, get_current_user, is_demo_mode
@@ -100,6 +102,29 @@ async def initialize_admin_client():
         return False
 
 
+def clean_response_text(text: str) -> str:
+    """Clean and format response text for better display"""
+    if not text:
+        return text
+    
+    # Remove agent prefixes and formatting
+    text = re.sub(r'^Agent:\s*[^\n]*\n?', '', text, flags=re.MULTILINE)
+    
+    # Remove markdown headers and make them regular text
+    text = re.sub(r'^#{1,6}\s*', '', text, flags=re.MULTILINE)
+    
+    # Remove "Final Answer:" prefix
+    text = re.sub(r'^Final Answer:\s*\n?', '', text, flags=re.MULTILINE)
+    
+    # Clean up excessive newlines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    
+    # Remove leading/trailing whitespace
+    text = text.strip()
+    
+    return text
+
+
 async def send_query_to_admin(query: str) -> str:
     """Send a query to the Admin Agent using HTTP requests."""
     try:
@@ -143,25 +168,73 @@ async def send_query_to_admin(query: str) -> str:
         
         logger.info(f"Received response from Admin Agent: {str(result)[:100]}...")
         
-        # Extract response content
-        if "result" in result:
-            task_result = result["result"]
-            if isinstance(task_result, dict) and "artifacts" in task_result:
-                artifacts = task_result["artifacts"]
-                if artifacts and len(artifacts) > 0:
-                    artifact = artifacts[0]
-                    if "parts" in artifact and len(artifact["parts"]) > 0:
-                        content = artifact["parts"][0].get("text", "No text content")
-                        logger.info("Successfully extracted response content")
-                        return content
+        # Extract response content from nested JSON structure
+        def extract_text_content(data, depth=0):
+            """Recursively extract text content from nested response structure"""
+            if depth > 10:  # Prevent infinite recursion
+                return None
+                
+            if isinstance(data, dict):
+                # Look for direct text field
+                if "text" in data:
+                    text_val = data["text"]
+                    if isinstance(text_val, str) and text_val.strip():
+                        # Check if it's a nested structure
+                        if text_val.startswith("root=") or "text='" in text_val:
+                            # Extract using multiple regex patterns
+                            patterns = [
+                                r"text='([^']*)'",
+                                r'text="([^"]*)"',
+                                r"text=([^,)]*)",
+                            ]
+                            for pattern in patterns:
+                                match = re.search(pattern, text_val)
+                                if match:
+                                    extracted = match.group(1).strip()
+                                    if extracted and not extracted.startswith("root="):
+                                        return extracted
+                        else:
+                            return text_val.strip()
+                
+                # Recursively search in nested structures
+                for key in ["result", "parts", "artifacts"]:
+                    if key in data:
+                        if isinstance(data[key], list) and data[key]:
+                            result_text = extract_text_content(data[key][0], depth + 1)
+                            if result_text:
+                                return result_text
+                        elif isinstance(data[key], dict):
+                            result_text = extract_text_content(data[key], depth + 1)
+                            if result_text:
+                                return result_text
+            
+            elif isinstance(data, list) and data:
+                # Check first item in list
+                return extract_text_content(data[0], depth + 1)
+            
+            return None
         
-        # Fallback handling
-        if "error" in result:
-            error_msg = result["error"].get("message", str(result["error"]))
-            return f"Admin Agent Error: {error_msg}"
-        
-        # Last resort - return string representation
-        return f"Response: {str(result)}"
+        try:
+            # Extract text using the recursive function
+            extracted_text = extract_text_content(result)
+            if extracted_text:
+                # Clean up the extracted text
+                cleaned_text = clean_response_text(extracted_text)
+                logger.info(f"Successfully extracted text: {cleaned_text[:50]}...")
+                return cleaned_text
+            
+            # Fallback handling
+            if "error" in result:
+                error_msg = result["error"].get("message", str(result["error"]))
+                return f"Admin Agent Error: {error_msg}"
+            
+            # Log the full structure for debugging
+            logger.warning(f"Could not extract text from response structure: {str(result)[:200]}...")
+            return "Sorry, I couldn't process the response properly. Please try again."
+            
+        except Exception as parse_error:
+            logger.error(f"Error parsing response: {str(parse_error)}")
+            return f"Error parsing response. Please try again."
         
     except Exception as e:
         error_msg = f"Error communicating with Admin Agent: {str(e)}"
@@ -187,21 +260,49 @@ def main():
     # Require authentication
     require_auth()
     
+    # Add custom CSS for modern chat interface
+    st.markdown("""
+    <style>
+    /* Modern chat styling */
+    .stChatMessage {
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    
+    /* Thinking animation */
+    @keyframes pulse {
+        0% { opacity: 0.4; }
+        50% { opacity: 1; }
+        100% { opacity: 0.4; }
+    }
+    
+    .thinking {
+        animation: pulse 1.5s infinite;
+    }
+    
+    /* Better message formatting */
+    .stMarkdown {
+        line-height: 1.6;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # App header
     st.title("🤖 HR & Finance Assistant")
-    
-    # Show demo mode banner if active
-    if is_demo_mode():
-        st.info("🧪 **Demo Mode Active** - Authentication is bypassed for testing purposes. Set `DEMO_MODE=false` in your .env file to enable OKTA authentication.")
     
     st.markdown("Ask questions about employees, vacation days, salaries, and financial information!")
     
     # Get current user for context
     current_user = get_current_user()
     if current_user:
-        welcome_msg = f"**Welcome, {current_user.get('name', current_user.get('email', 'User'))}!**"
-        if is_demo_mode():
-            welcome_msg += " *(Demo User)*"
+        user_name = current_user.get('name', current_user.get('email', 'User'))
+        # Clean up the user name to avoid duplication
+        if user_name == "Demo User" and is_demo_mode():
+            welcome_msg = f"**Welcome, {user_name}!**"
+        else:
+            welcome_msg = f"**Welcome, {user_name}!**"
+            if is_demo_mode():
+                welcome_msg += " *(Demo Mode)*"
         st.markdown(welcome_msg)
     
     # Display Admin Agent status
@@ -262,9 +363,34 @@ def main():
         
         # Get response from Admin Agent
         with st.chat_message("assistant"):
-            with st.spinner("Processing your request... This may take up to 2 minutes for complex queries."):
-                response = get_agent_response(prompt)
-            st.write(response)
+            # Show thinking indicator
+            thinking_placeholder = st.empty()
+            thinking_placeholder.markdown("🤔 **Thinking...**")
+            
+            # Get the actual response
+            response = get_agent_response(prompt)
+            
+            # Clear thinking message
+            thinking_placeholder.empty()
+            
+            # Display response with streaming effect only if response is valid
+            if response and not response.startswith("Error") and not response.startswith("Admin Agent Error"):
+                message_placeholder = st.empty()
+                full_response = ""
+                
+                # Simple character-by-character streaming for smoother effect
+                for i, char in enumerate(response):
+                    full_response += char
+                    # Update every few characters to reduce flicker
+                    if i % 3 == 0 or i == len(response) - 1:
+                        message_placeholder.markdown(full_response + ("▌" if i < len(response) - 1 else ""))
+                        time.sleep(0.01)
+                
+                # Final clean message
+                message_placeholder.markdown(full_response)
+            else:
+                # For errors, display immediately without streaming
+                st.markdown(response)
         
         # Add assistant response to chat history
         st.session_state.messages.append({"role": "assistant", "content": response})

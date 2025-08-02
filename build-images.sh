@@ -34,45 +34,55 @@ print_error() {
 # Function to show usage
 show_usage() {
     cat << EOF
-Usage: $0 [OPTIONS]
+Usage: $0 [OPTIONS] [COMPONENTS...]
 
-Build and push all Docker images for the Agentic Platform to ECR.
+Build and push Docker images for the Agentic Platform to ECR.
 
 OPTIONS:
-    -r, --region REGION     AWS region [default: us-west-2]
     -t, --tag TAG          Image tag [default: latest]
     -h, --help             Show this help message
+
+COMPONENTS (optional):
+    admin                  Build only admin-agent
+    hr                     Build only hr-agent  
+    finance                Build only finance-agent
+    ui                     Build only ui-app
+    
+    If no components specified, all images will be built.
 
 EXAMPLES:
     # Build all images with default settings
     $0
 
-    # Build with custom region and tag
-    $0 -r us-east-1 -t v1.0.0
+    # Build only UI and admin components
+    $0 ui admin
+
+    # Build only finance component with custom tag
+    $0 -t v1.0.0 finance
+
+    # Build multiple components
+    $0 ui hr finance
 
 PREREQUISITES:
     1. AWS CLI configured with appropriate permissions
     2. Docker installed and running
     3. ECR repositories will be created automatically if they don't exist
 
-IMAGES BUILT:
-    - admin-agent
-    - hr-agent
-    - finance-agent
-    - ui-app
+AVAILABLE IMAGES:
+    - admin-agent (component: admin)
+    - hr-agent (component: hr)
+    - finance-agent (component: finance)
+    - ui-app (component: ui)
 
 EOF
 }
 
 # Parse command line arguments
 AWS_REGION="us-west-2"
+COMPONENTS=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -r|--region)
-            AWS_REGION="$2"
-            shift 2
-            ;;
         -t|--tag)
             IMAGE_TAG="$2"
             shift 2
@@ -81,13 +91,23 @@ while [[ $# -gt 0 ]]; do
             show_usage
             exit 0
             ;;
+        admin|hr|finance|ui)
+            COMPONENTS+=("$1")
+            shift
+            ;;
         *)
-            print_error "Unknown option: $1"
+            print_error "Unknown option or component: $1"
+            print_error "Valid components: admin, hr, finance, ui"
             show_usage
             exit 1
             ;;
     esac
 done
+
+# If no components specified, build all
+if [ ${#COMPONENTS[@]} -eq 0 ]; then
+    COMPONENTS=("admin" "hr" "finance" "ui")
+fi
 
 # Validate prerequisites
 validate_prerequisites() {
@@ -158,7 +178,7 @@ build_and_push_image() {
     if [ "$needs_common" = "true" ]; then
         # For agents that need common directory, build from root with context
         print_info "Building $repo_name with common dependencies from root context..."
-        docker build --platform=linux/amd64 \
+        docker build --platform=linux/amd64 --no-cache \
             -f "$component_dir/Dockerfile" \
             -t "$repo_name:$IMAGE_TAG" \
             .
@@ -166,7 +186,7 @@ build_and_push_image() {
         # For components that don't need common, build from their directory
         print_info "Building $repo_name from component directory..."
         cd "$SCRIPT_DIR/$component_dir"
-        docker build --platform=linux/amd64 -t "$repo_name:$IMAGE_TAG" .
+        docker build --platform=linux/amd64 --no-cache -t "$repo_name:$IMAGE_TAG" .
         cd "$SCRIPT_DIR"
     fi
     
@@ -184,29 +204,68 @@ build_and_push_image() {
     print_success "$repo_name image built and pushed successfully"
 }
 
+# Function to force delete ECR repository if it exists
+force_delete_ecr_repository() {
+    local repo_name="$1"
+    print_info "Checking if ECR repository '$repo_name' exists..."
+    
+    if aws ecr describe-repositories --repository-names "$repo_name" --region "$AWS_REGION" >/dev/null 2>&1; then
+        print_warning "Deleting existing ECR repository '$repo_name'..."
+        aws ecr delete-repository --repository-name "$repo_name" --region "$AWS_REGION" --force >/dev/null
+        print_success "ECR repository '$repo_name' deleted"
+    else
+        print_info "ECR repository '$repo_name' does not exist"
+    fi
+}
+
+# Function to get component details
+get_component_details() {
+    local component="$1"
+    case $component in
+        admin)
+            echo "agents/admin admin-agent false"
+            ;;
+        hr)
+            echo "agents/hr hr-agent true"
+            ;;
+        finance)
+            echo "agents/finance finance-agent true"
+            ;;
+        ui)
+            echo "ui ui-app false"
+            ;;
+        *)
+            print_error "Unknown component: $component"
+            exit 1
+            ;;
+    esac
+}
+
 # Main build function
-build_all_images() {
+build_selected_images() {
     print_info "Starting Docker image build process..."
+    print_info "Components to build: ${COMPONENTS[*]}"
     
     # Login to ECR once
     ecr_login
     
-    # Build all images
-    print_info "Building all component images..."
+    # Force delete existing repositories for selected components
+    print_info "Cleaning up existing ECR repositories for selected components..."
+    for component in "${COMPONENTS[@]}"; do
+        read -r component_dir repo_name needs_common <<< "$(get_component_details "$component")"
+        force_delete_ecr_repository "$repo_name"
+    done
     
-    # Admin Agent (no common directory needed)
-    build_and_push_image "agents/admin" "admin-agent" "false"
+    # Build selected images
+    print_info "Building selected component images..."
     
-    # HR Agent (needs common directory)
-    build_and_push_image "agents/hr" "hr-agent" "true"
+    for component in "${COMPONENTS[@]}"; do
+        print_info "Building $component component..."
+        read -r component_dir repo_name needs_common <<< "$(get_component_details "$component")"
+        build_and_push_image "$component_dir" "$repo_name" "$needs_common"
+    done
     
-    # Finance Agent (needs common directory)
-    build_and_push_image "agents/finance" "finance-agent" "true"
-    
-    # UI App (no common directory needed)
-    build_and_push_image "ui" "ui-app" "false"
-    
-    print_success "All images built and pushed successfully!"
+    print_success "Selected images built and pushed successfully!"
 }
 
 # Function to show build summary
@@ -214,10 +273,10 @@ show_summary() {
     print_info "Build Summary:"
     echo
     echo "=== Images Built ==="
-    echo "• $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/admin-agent:$IMAGE_TAG"
-    echo "• $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/hr-agent:$IMAGE_TAG"
-    echo "• $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/finance-agent:$IMAGE_TAG"
-    echo "• $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/ui-app:$IMAGE_TAG"
+    for component in "${COMPONENTS[@]}"; do
+        read -r component_dir repo_name needs_common <<< "$(get_component_details "$component")"
+        echo "• $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$repo_name:$IMAGE_TAG"
+    done
     echo
     echo "=== Next Steps ==="
     echo "1. Set required environment variables:"
@@ -242,7 +301,7 @@ main() {
     print_info "Starting Agentic Platform Docker Image Build"
     
     validate_prerequisites
-    build_all_images
+    build_selected_images
     show_summary
     
     print_success "Docker image build process completed successfully!"

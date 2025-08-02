@@ -20,7 +20,7 @@ agents:
     image:
       repository: "admin-agent"
       tag: "latest"
-      pullPolicy: IfNotPresent
+      pullPolicy: Always
     service:
       type: ClusterIP
       port: 8080
@@ -54,7 +54,7 @@ agents:
     image:
       repository: "hr-agent"
       tag: "latest"
-      pullPolicy: IfNotPresent
+      pullPolicy: Always
     service:
       type: ClusterIP
       port: 80
@@ -96,7 +96,7 @@ agents:
     image:
       repository: "finance-agent"
       tag: "latest"
-      pullPolicy: IfNotPresent
+      pullPolicy: Always
     service:
       type: ClusterIP
       port: 80
@@ -124,7 +124,7 @@ ui:
   image:
     repository: "ui-app"
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   service:
     type: ClusterIP
     port: 80
