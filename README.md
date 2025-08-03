@@ -215,7 +215,10 @@ Suitable for **development**, and **testing** purposes, without OAuth complexity
 
 ```bash
 # Set required environment variable
-export ACCOUNT_ID=your-aws-account-id
+export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+#Note replace region and name with what you choose in terraform.tfvars
+aws eks update-kubeconfig --region us-west-2 --name my-agentic-cluster 
 
 # Deploy in demo mode
 ./deploy-helm.sh -m demo
@@ -228,8 +231,11 @@ export ACCOUNT_ID=your-aws-account-id
 kubectl port-forward svc/agents-ui-app-service 8501:80
 
 # Open browser to http://localhost:8501
-# No login required - start chatting immediately!
+
 ```
+No login required - start chatting immediately!   
+
+"What is the name of employee EMP0002?"
 
 ## 🔒 Secure Mode Deployment  
 
