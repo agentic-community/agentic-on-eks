@@ -45,17 +45,30 @@ class FinanceAgentTaskManager(DefaultRequestHandler):
         try:
             # Process query through Finance agent
             result = self.agent.invoke(query)
+            logger.info(f"Finance agent result type: {type(result)}")
+            logger.info(f"Finance agent result: {result}")
+            
             result_text = "Sorry, no result"
             if result:
-                result_text = result['response']
+                if isinstance(result, dict) and 'response' in result:
+                    result_text = result['response']
+                elif isinstance(result, str):
+                    result_text = result
+                else:
+                    result_text = str(result)
+                
+                # Clean up the text
                 result_text = result_text.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+            
+            logger.info(f"Final result_text type: {type(result_text)}")
+            logger.info(f"Final result_text: {result_text[:100]}...")
             
             # Create response message
             import uuid
             response_message = Message(
                 messageId=str(uuid.uuid4()),
                 role=Role.agent,
-                parts=[Part(root=TextPart(kind='text', text=result if result else "Sorry, no result"))]
+                parts=[Part(root=TextPart(kind='text', text=result_text))]
             )
             
             logger.info(f"Finance agent processed query successfully: {query[:50]}...")
