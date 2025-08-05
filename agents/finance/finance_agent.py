@@ -442,12 +442,22 @@ class FinanceAgent:
         self.agent = None
 
     def invoke(self, query: str):
-        """Process a user query using the HR agent"""
+        """Process a user query using the Finance agent"""
         if not self.agent:
             self.agent = create_finance_agent()
 
         response = _invoke(query, self.agent)
-        return response
+        
+        # Convert response to string format for A2A compatibility
+        if isinstance(response, dict):
+            if 'response' in response:
+                return response['response']
+            else:
+                return str(response)
+        elif isinstance(response, str):
+            return response
+        else:
+            return str(response)
 
 
 # Main entry point for testing

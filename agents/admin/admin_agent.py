@@ -268,6 +268,30 @@ class AdminAgent:
                             logger.info(f"Received response from {agent_name}: {content[:100]}...")
                             return content
             
+            # Handle dictionary responses (like from Finance agent)
+            if isinstance(response, dict):
+                if 'response' in response:
+                    content = response['response']
+                    logger.info(f"Received dictionary response from {agent_name}: {content[:100]}...")
+                    return content
+                else:
+                    # Convert dictionary to readable string
+                    content = str(response)
+                    logger.info(f"Received dictionary response from {agent_name} (converted): {content[:100]}...")
+                    return content
+            
+            # Handle A2A response objects
+            if hasattr(response, 'result') and hasattr(response.result, 'parts'):
+                # Try to extract text from the response parts
+                try:
+                    parts = response.result.parts
+                    if parts and hasattr(parts[0], 'root') and hasattr(parts[0].root, 'text'):
+                        content = parts[0].root.text
+                        logger.info(f"Received A2A response from {agent_name}: {content[:100]}...")
+                        return content
+                except Exception as e:
+                    logger.warning(f"Could not extract text from A2A response: {str(e)}")
+            
             # Fallback to string representation
             result = str(response)
             logger.info(f"Received response from {agent_name} (fallback format)")

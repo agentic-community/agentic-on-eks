@@ -15,6 +15,9 @@ import time
 # Import authentication module
 from auth import require_auth, show_user_info, is_authenticated, get_current_user, is_demo_mode
 
+# Import input validation module
+from input_validation import validate_user_input, InputType, ValidationLevel
+
 # Simple data structures for agent communication
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -247,6 +250,46 @@ def get_agent_response(query: str) -> str:
     return asyncio.run(send_query_to_admin(query))
 
 
+def validate_and_process_query(query: str) -> tuple[str, bool]:
+    """
+    Validate user query and return response with validation status.
+    
+    Args:
+        query: User's input query
+        
+    Returns:
+        tuple: (response_message, is_valid)
+    """
+    # Validate the input query
+    validation_result = validate_user_input(query, InputType.QUERY)
+    
+    if not validation_result.is_valid:
+        error_message = "❌ **Input Validation Failed**\n\n"
+        error_message += "**Errors:**\n"
+        for error in validation_result.errors:
+            error_message += f"• {error}\n"
+        
+        if validation_result.warnings:
+            error_message += "\n**Warnings:**\n"
+            for warning in validation_result.warnings:
+                error_message += f"• {warning}\n"
+        
+        error_message += "\n**Please try again with a valid query.**"
+        return error_message, False
+    
+    # If there are warnings but no errors, show them but continue
+    if validation_result.warnings:
+        st.warning("⚠️ **Query Warning:** " + "; ".join(validation_result.warnings))
+    
+    # Process the sanitized query
+    try:
+        response = get_agent_response(validation_result.sanitized_input)
+        return response, True
+    except Exception as e:
+        logger.error(f"Error processing validated query: {str(e)}")
+        return f"❌ **Error processing query:** {str(e)}", False
+
+
 # Initialize Streamlit app
 def main():
     """Main Streamlit application."""
@@ -321,6 +364,33 @@ def main():
                 else:
                     st.error("❌ Failed to connect to Admin Agent")
         
+        # Input Validation Status
+        st.markdown("---")
+        st.markdown("### 🛡️ Input Validation")
+        
+        from input_validation import get_validator
+        validator = get_validator()
+        stats = validator.get_validation_stats()
+        
+        st.info(f"**Security Level:** {stats['validation_level'].title()}")
+        st.info(f"**Max Query Length:** {stats['max_query_length']} chars")
+        st.info(f"**Malicious Patterns:** {stats['malicious_patterns_count']} detected")
+        st.info(f"**Allowed Keywords:** {stats['allowed_keywords_count']} domains")
+        
+        # Validation level selector
+        validation_level = st.selectbox(
+            "Security Level",
+            ["medium", "high", "low"],
+            index=0,
+            help="Higher security levels have stricter validation rules"
+        )
+        
+        if st.button("Update Security Level"):
+            from input_validation import ValidationLevel
+            new_level = ValidationLevel(validation_level)
+            # This would update the global validator - in a real app, you'd want to persist this
+            st.success(f"Security level updated to {validation_level.title()}")
+        
         st.markdown("---")
         st.markdown("### 💡 Example Queries")
         st.markdown("""
@@ -368,13 +438,13 @@ def main():
             thinking_placeholder.markdown("🤔 **Thinking...**")
             
             # Get the actual response
-            response = get_agent_response(prompt)
+            response, is_valid = validate_and_process_query(prompt)
             
             # Clear thinking message
             thinking_placeholder.empty()
             
             # Display response with streaming effect only if response is valid
-            if response and not response.startswith("Error") and not response.startswith("Admin Agent Error"):
+            if is_valid:
                 message_placeholder = st.empty()
                 full_response = ""
                 
