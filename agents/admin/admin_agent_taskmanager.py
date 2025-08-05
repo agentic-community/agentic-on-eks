@@ -78,8 +78,7 @@ class AdminAgentTaskManager(DefaultRequestHandler):
             response_message = Message(
                 messageId=str(uuid.uuid4()),
                 role=Role.agent,
-                parts=[Part(root=TextPart(kind='text', text=result))],
-                contextId=getattr(params.message, 'contextId', None)
+                parts=[Part(root=TextPart(kind='text', text=result))]
             )
             
             return response_message
@@ -92,8 +91,7 @@ class AdminAgentTaskManager(DefaultRequestHandler):
             error_message = Message(
                 messageId=str(uuid.uuid4()),
                 role=Role.agent,
-                parts=[Part(root=TextPart(kind='text', text=f"Error processing request: {str(e)}"))],
-                contextId=getattr(params.message, 'contextId', None)
+                parts=[Part(root=TextPart(kind='text', text=f"Error processing request: {str(e)}"))]
             )
             
             return error_message

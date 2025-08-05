@@ -55,8 +55,7 @@ class FinanceAgentTaskManager(DefaultRequestHandler):
             response_message = Message(
                 messageId=str(uuid.uuid4()),
                 role=Role.agent,
-                parts=[Part(root=TextPart(kind='text', text=result_text))],
-                contextId=getattr(params.message, 'contextId', None)
+                parts=[Part(root=TextPart(kind='text', text=result if result else "Sorry, no result"))]
             )
             
             logger.info(f"Finance agent processed query successfully: {query[:50]}...")
@@ -70,8 +69,7 @@ class FinanceAgentTaskManager(DefaultRequestHandler):
             error_message = Message(
                 messageId=str(uuid.uuid4()),
                 role=Role.agent,
-                parts=[Part(root=TextPart(kind='text', text=f"Error processing request: {str(e)}"))],
-                contextId=getattr(params.message, 'contextId', None)
+                parts=[Part(root=TextPart(kind='text', text=f"Error processing request: {str(e)}"))]
             )
             
             return error_message
