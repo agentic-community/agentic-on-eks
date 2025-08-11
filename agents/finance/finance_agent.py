@@ -25,6 +25,9 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import interrupt
 
+# LangSmith tracing import - this enables automatic tracing when environment variables are set
+import langsmith
+
 # Financial data tools
 import yfinance as yf
 import pandas as pd

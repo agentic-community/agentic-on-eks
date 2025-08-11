@@ -20,6 +20,16 @@ import httpx
 # LangChain for LLM-based routing
 from langchain_aws import ChatBedrockConverse
 
+# LangSmith monitoring setup - only enable when using LangChain operations
+import os
+# Disable LangChain playground mode to prevent route conflicts
+os.environ["LANGCHAIN_DISABLE_PLAYGROUND"] = "true"
+# Don't set these globally to avoid LangChain playground conflicts
+# os.environ["LANGCHAIN_TRACING_V2"] = "true"
+# os.environ["LANGCHAIN_ENDPOINT"] = "http://langsmith-service:8000"
+# os.environ["LANGCHAIN_API_KEY"] = "dev-api-key"
+# os.environ["LANGCHAIN_PROJECT"] = "agentic-on-eks"
+
 # OAuth client for A2A authentication
 from oauth import get_auth_headers
 
@@ -136,8 +146,18 @@ class AdminAgent:
     
     def _get_llm(self):
         """Initialize the LLM for routing decisions."""
+        # Import LangChain only when needed to avoid playground conflicts
+        from langchain_aws import ChatBedrockConverse
+        
         model_id = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-sonnet-20240229-v1:0")
         aws_region = os.getenv("AWS_REGION", "us-west-2")
+        
+        # Enable LangSmith tracing only for this LLM instance
+        # Use environment variables set by Kubernetes deployment
+        os.environ["LANGCHAIN_TRACING_V2"] = os.getenv("LANGCHAIN_TRACING_V2", "true")
+        os.environ["LANGCHAIN_ENDPOINT"] = os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
+        os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY", "")
+        os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "agentic-on-eks")
         
         bedrock_client = boto3.client(
             service_name='bedrock-runtime', 

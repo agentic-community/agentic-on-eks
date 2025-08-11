@@ -30,6 +30,9 @@ RUN uv venv && \
         "python-dotenv>=1.0.0" \
         "uvicorn>=0.23.2"
 
+# Set environment variable to disable LangChain playground
+RUN echo 'export LANGCHAIN_DISABLE_PLAYGROUND=true' >> /etc/environment
+
 # Copy application files
 COPY *.py ./
 
