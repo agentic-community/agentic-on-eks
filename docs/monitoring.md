@@ -2,19 +2,43 @@
 
 This directory contains the monitoring configuration for your AI agent platform deployed on Amazon EKS.
 
+## 📋 **Prerequisites**
+
+Before setting up monitoring, ensure you have:
+
+1. **EKS Cluster Deployed** - Via Terraform in `/infra` directory
+2. **Agents and UI Deployed** - Using Helm charts:
+   ```bash
+   # Deploy agents and UI first
+   ./deploy-helm.sh -m demo  # or -m secure for production
+   
+   # Verify deployments are running
+   kubectl get deployments | grep agents-
+   kubectl get pods | grep agents-
+   ```
+3. **kubectl Configured** - Connected to your EKS cluster
+4. **LangSmith Account** - Sign up at https://smith.langchain.com/ (free tier available)
+
 ## 🚀 **Quick Setup (Recommended)**
 
 ```bash
-# Step 1: Set up monitoring
+# Step 1: Deploy agents and UI (if not already done)
+./deploy-helm.sh -m demo
+
+# Step 2: Set up monitoring
 ./monitoring/deploy-monitoring.sh
 
-# Step 2: Generate traffic to populate dashboard
-./monitoring/traffic-generator.sh
+# Step 3: Port-forward the UI service
+kubectl port-forward svc/agents-ui-app-service 8501:80
 
-# Step 3: View your dashboard at https://smith.langchain.com/
+# Step 4: Access UI and generate traffic
+# Open http://localhost:8501 in your browser
+# Interact with agents to generate traces
+
+# Step 5: View your dashboard at https://smith.langchain.com/
 ```
 
-**That's it!** Two commands and you'll have a fully populated LangSmith dashboard.
+**That's it!** Your agents are now monitored with LangSmith.
 
 ## 🎯 **Overview**
 
@@ -91,14 +115,6 @@ kubectl set env deployment/agents-hr-agent LANGCHAIN_ENDPOINT=https://api.smith.
    - 📈 Performance analytics
    - 🚀 Agent interaction logs
 
-## 🏗️ **Architecture**
-
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Your Agents   │───▶│  LangSmith Cloud │───▶│  Full Dashboard │
-│ (Admin/HR/Fin)  │    │   (API Endpoint) │    │   with Charts   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-```
 
 ## 📁 **Files in This Directory**
 
@@ -147,18 +163,69 @@ LANGCHAIN_TRACING: "true"              # Enable tracing
 
 ## 🔍 **Troubleshooting**
 
-### **Common Issues**
-1. **No traces appearing**: Check API key and endpoint configuration
-2. **Authentication errors**: Verify your LangSmith Cloud API key
-3. **Project not found**: Ensure project name matches in LangSmith Cloud
+### **Verify LangSmith Environment Variables**
 
-### **Verification Commands**
+**IMPORTANT**: After running the monitoring setup, verify that all required environment variables are set correctly:
+
 ```bash
-# Check agent environment variables
-kubectl get deployment agents-admin-agent -o yaml | grep -A 10 env:
+# Check all LangSmith environment variables for each agent
+echo "=== Admin Agent ==="
+kubectl describe deployment agents-admin-agent | grep -E "LANGCHAIN_|LANGSMITH_" || echo "No LangSmith vars found!"
 
-# Test LangSmith connectivity
-kubectl exec -it deployment/agents-admin-agent -- curl -H "Authorization: Bearer $LANGCHAIN_API_KEY" https://api.smith.langchain.com/traces
+echo "\n=== HR Agent ==="
+kubectl describe deployment agents-hr-agent | grep -E "LANGCHAIN_|LANGSMITH_" || echo "No LangSmith vars found!"
+
+echo "\n=== Finance Agent ==="
+kubectl describe deployment agents-finance-agent | grep -E "LANGCHAIN_|LANGSMITH_" || echo "No LangSmith vars found!"
+```
+
+**Expected output should include:**
+- `LANGCHAIN_TRACING_V2: true`
+- `LANGCHAIN_ENDPOINT: https://api.smith.langchain.com`
+- `LANGCHAIN_API_KEY: lsv2_pt_...` (your API key)
+- `LANGCHAIN_PROJECT: agentic-on-eks`
+- `LANGCHAIN_TRACING: true`
+
+### **Quick Verification Script**
+```bash
+# One-liner to check all agents at once
+for deployment in agents-admin-agent agents-hr-agent agents-finance-agent; do 
+  echo "Checking $deployment:"; 
+  kubectl get deployment $deployment -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="LANGCHAIN_API_KEY")].value}' | grep -q "ls" && echo "✅ LangSmith configured" || echo "❌ LangSmith NOT configured"; 
+done
+```
+
+### **Common Issues**
+1. **No traces appearing**: 
+   - Verify environment variables are set (use commands above)
+   - For traffic generator: Ensure Admin Agent is port-forwarded: `kubectl port-forward svc/agents-admin-agent-service 8080:8080`
+   - For UI usage: Ensure UI is port-forwarded: `kubectl port-forward svc/agents-ui-app-service 8501:80`
+   - Check API key is valid and starts with `lsv2_` or similar
+   
+2. **Authentication errors**: 
+   - Verify your LangSmith Cloud API key
+   - Re-run setup: `./monitoring/deploy-monitoring.sh`
+   
+3. **Project not found**: 
+   - The project is created automatically on first trace
+   - Make sure to interact with agents via UI to generate traces
+
+### **Manual Fix if Variables Missing**
+```bash
+# If environment variables are missing, set them manually
+export LANGSMITH_API_KEY="your_actual_api_key_here"
+
+for deployment in agents-admin-agent agents-hr-agent agents-finance-agent; do
+  kubectl set env deployment/$deployment \
+    LANGCHAIN_TRACING_V2=true \
+    LANGCHAIN_ENDPOINT=https://api.smith.langchain.com \
+    LANGCHAIN_API_KEY=$LANGSMITH_API_KEY \
+    LANGCHAIN_PROJECT=agentic-on-eks \
+    LANGCHAIN_TRACING=true
+done
+
+# Restart deployments
+kubectl rollout restart deployment/agents-admin-agent deployment/agents-hr-agent deployment/agents-finance-agent
 ```
 
 ### **Using the Automated Script for Troubleshooting**
@@ -180,12 +247,12 @@ kubectl get deployment agents-hr-agent
 
 ## 🎯 **Next Steps**
 
-1. **Get your LangSmith Cloud API key** from [https://smith.langchain.com/](https://smith.langchain.com/)
+1. **Get your LangSmith API key** from [https://smith.langchain.com/](https://smith.langchain.com/)
 2. **Update agent environment variables** using the kubectl commands above
 3. **Monitor your agents** in real-time through the cloud dashboard
 4. **Set up alerts** for performance issues or errors
 
-## 💡 **Benefits of Cloud LangSmith**
+## 💡 **Benefits of LangSmith**
 
 - **No local infrastructure** to manage or maintain
 - **Full dashboard experience** with charts and analytics
@@ -193,16 +260,6 @@ kubectl get deployment agents-hr-agent
 - **Professional monitoring** with enterprise features
 - **Cost-effective** usage-based pricing
 - **Team collaboration** with shared dashboards
-
-## 🚀 **Benefits of Automated Setup Script**
-
-- **One-command setup** - no manual kubectl commands needed
-- **Error prevention** - validates API key format and prerequisites
-- **Comprehensive verification** - ensures all agents are properly configured
-- **Automatic restarts** - deployments restart to pick up new environment variables
-- **Connectivity testing** - verifies LangSmith API access
-- **Clear next steps** - provides guidance on what to do after setup
-- **Troubleshooting help** - includes common commands for debugging
 
 ## 🎯 **Populate Your LangSmith Dashboard**
 
@@ -227,8 +284,83 @@ After setting up monitoring, you'll want to generate some traffic to see traces 
 ```
 
 ### **What the Traffic Generator Does**
-- 🎭 **Diverse queries** - 30+ different query types across all agents
+- 🎭 **Diverse queries** - 25+ different query types with real employee data
 - ⏱️ **Realistic timing** - configurable intervals and duration
-- 🔄 **Agent coverage** - hits Admin, HR, and Finance agents
-- 📊 **Rich traces** - creates comprehensive monitoring data
-- 🎯 **Dashboard ready** - populates LangSmith with real activity
+- 🔄 **Real HTTP requests** - sends actual queries to Admin Agent service
+- 📊 **Rich traces** - creates comprehensive monitoring data via routing
+- 🎯 **Dashboard ready** - populates LangSmith with realistic agent interactions
+
+### **Prerequisites for Traffic Generator**
+Before running the traffic generator, you need:
+
+1. **Port-forward to Admin Agent:**
+   ```bash
+   kubectl port-forward svc/agents-admin-agent-service 8080:8080 &
+   ```
+
+2. **Verify Admin Agent is accessible:**
+   ```bash
+   curl http://localhost:8080/.well-known/agent.json
+   ```
+
+### Sample Run and Output
+
+```
+./monitoring/traffic-generator.sh -d 30 -i 5 
+🚀 Traffic Generator for LangSmith Dashboard
+============================================
+
+[SUCCESS] Configuration validated:
+[INFO]   Duration: 30 seconds
+[INFO]   Query interval: 5 seconds
+[INFO]   Estimated queries: 18
+[INFO] Checking if Admin Agent service is accessible...
+[SUCCESS] Found Admin Agent service
+[SUCCESS] Admin Agent is accessible on port 8080
+[SUCCESS] Connected to: Admin Agent
+Admin Agent
+
+[INFO] Ready to generate traffic!
+[INFO] Press Ctrl+C to stop early
+
+[INFO] Starting traffic generation for 30 seconds...
+[INFO] Sending queries every 5 seconds...
+[INFO] All queries will be sent to Admin Agent for routing
+
+[INFO] Elapsed: 0s | Remaining: 30s | Queries sent: 0
+[TRAFFIC] Sending: What's the leave policy for employee EMP0002?
+[SUCCESS] Query processed successfully (HTTP 200)
+  Response snippet: root=SendMessageSuccessResponse(id='066c1a1c-49d1-...
+
+[INFO] Waiting 5s before next query...
+[INFO] Elapsed: 12s | Remaining: 18s | Queries sent: 1
+[TRAFFIC] Sending: Get employee directory information for EMP0010
+[SUCCESS] Query processed successfully (HTTP 200)
+  Response snippet: root=SendMessageSuccessResponse(id='4d0cb064-3272-...
+
+[INFO] Waiting 5s before next query...
+[INFO] Elapsed: 25s | Remaining: 5s | Queries sent: 2
+[TRAFFIC] Sending: I need assistance with HR and Finance
+[SUCCESS] Query processed successfully (HTTP 200)
+  Response snippet: root=SendMessageSuccessResponse(id='58b2debb-a695-...
+
+[SUCCESS] Traffic generation complete!
+[SUCCESS] Total queries sent: 3
+[SUCCESS] Duration: 30 seconds
+```
+
+### Langsmith Sample Dashboard
+
+Sample real time dashboards for agents are seen below:
+
+**Callflow Trace**
+
+![Flow_Trace](img/flow_trace.png)
+
+**LLM Trace**
+
+![LLM_Trace](img/llm_trace.png)
+
+**Tokens Trace**
+
+![Tokens_Trace](img/tokens_trace.png)

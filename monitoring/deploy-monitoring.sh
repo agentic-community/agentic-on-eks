@@ -71,10 +71,10 @@ check_deployments() {
 # Function to get LangSmith API key from user
 get_langsmith_api_key() {
     echo
-    print_status "LangSmith Cloud API Key Setup"
+    print_status "LangSmith API Key Setup"
     echo "=================================="
     echo
-    echo "To get your LangSmith Cloud API key:"
+    echo "To get your LangSmith API key:"
     echo "1. Go to https://smith.langchain.com/"
     echo "2. Sign up/Sign in to your account"
     echo "3. Navigate to your project settings"

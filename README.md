@@ -321,9 +321,28 @@ The platform supports intelligent query routing to specialized agents:
 # → Retrieves salary and compensation details
 ```
 
+## 📊 Monitoring
+
+All the agents are powered by LangSmith integration for observability. Now, you can monitor your agents' performance and interactions with **LangSmith** integration for real-time observability.
+
+### Features
+- 🔍 **Real-time Traces**: Monitor every agent interaction and LLM call
+- 📈 **Performance Metrics**: Track response times, token usage, and costs  
+- 🎯 **Agent Flow Analysis**: Visualize routing decisions and agent collaboration
+- 🚨 **Error Tracking**: Debug failed requests and performance issues
+
+### What You'll See
+- **Admin Agent** routing decisions and LLM reasoning
+- **HR Agent** (CrewAI) traces for employee and leave queries  
+- **Finance Agent** (LangGraph) traces for salary and financial calculations
+- End-to-end latency analysis across the agent workflow
+
+For detailed setup instructions, see the [Monitoring Guide](docs/monitoring.md).
+
 ## 📚 Additional Documentation
 
 - 🔐 [Authentication Setup](docs/auth.md)
+- 📊 [Monitoring Setup](docs/monitoring.md)
 
 ## 📄 License
 

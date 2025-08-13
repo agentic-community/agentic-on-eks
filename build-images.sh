@@ -78,7 +78,7 @@ EOF
 }
 
 # Parse command line arguments
-AWS_REGION="us-east-1"
+AWS_REGION="us-west-2"
 COMPONENTS=()
 
 while [[ $# -gt 0 ]]; do
