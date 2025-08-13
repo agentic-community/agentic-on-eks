@@ -25,6 +25,9 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import interrupt
 
+# LangSmith tracing import - this enables automatic tracing when environment variables are set
+import langsmith
+
 # Financial data tools
 import yfinance as yf
 import pandas as pd
@@ -442,12 +445,22 @@ class FinanceAgent:
         self.agent = None
 
     def invoke(self, query: str):
-        """Process a user query using the HR agent"""
+        """Process a user query using the Finance agent"""
         if not self.agent:
             self.agent = create_finance_agent()
 
         response = _invoke(query, self.agent)
-        return response
+        
+        # Convert response to string format for A2A compatibility
+        if isinstance(response, dict):
+            if 'response' in response:
+                return response['response']
+            else:
+                return str(response)
+        elif isinstance(response, str):
+            return response
+        else:
+            return str(response)
 
 
 # Main entry point for testing

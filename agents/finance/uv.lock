@@ -692,6 +692,7 @@ dependencies = [
     { name = "langchain-aws" },
     { name = "langchain-community" },
     { name = "langgraph" },
+    { name = "langsmith" },
     { name = "mem0ai" },
     { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.2.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -720,6 +721,7 @@ requires-dist = [
     { name = "langchain-aws", specifier = ">=0.2.23" },
     { name = "langchain-community", specifier = ">=0.0.10" },
     { name = "langgraph", specifier = ">=0.0.21" },
+    { name = "langsmith", specifier = ">=0.1.0" },
     { name = "mem0ai", specifier = ">=0.1.97" },
     { name = "numpy", specifier = ">=1.26.1" },
     { name = "pandas", specifier = ">=2.1.1" },
@@ -1797,10 +1799,10 @@ name = "langgraph"
 version = "0.4.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "langchain-core", marker = "python_full_version < '4.0'" },
+    { name = "langchain-core", marker = "python_full_version < '4'" },
     { name = "langgraph-checkpoint" },
-    { name = "langgraph-prebuilt", marker = "python_full_version < '4.0'" },
-    { name = "langgraph-sdk", marker = "python_full_version < '4.0'" },
+    { name = "langgraph-prebuilt", marker = "python_full_version < '4'" },
+    { name = "langgraph-sdk", marker = "python_full_version < '4'" },
     { name = "pydantic" },
     { name = "xxhash" },
 ]
@@ -1814,7 +1816,7 @@ name = "langgraph-checkpoint"
 version = "2.0.26"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "langchain-core", marker = "python_full_version < '4.0'" },
+    { name = "langchain-core", marker = "python_full_version < '4'" },
     { name = "ormsgpack" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c5/61/e2518ac9216a4e9f4efda3ac61595e3c9e9ac00833141c9688e8d56bd7eb/langgraph_checkpoint-2.0.26.tar.gz", hash = "sha256:2b800195532d5efb079db9754f037281225ae175f7a395523f4bf41223cbc9d6", size = 37874, upload-time = "2025-05-15T17:31:22.466Z" }

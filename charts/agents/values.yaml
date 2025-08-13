@@ -8,7 +8,7 @@ mode: "secure"
 # Global configuration shared across all components
 global:
   aws:
-    region: us-west-2
+    region: us-east-1
     accountId: "${ACCOUNT_ID}"  # Set via environment variable
 
 # Agents configuration - easily extensible
@@ -37,6 +37,15 @@ agents:
         value: "agents-finance-agent-service.default.svc.cluster.local"
       - name: FINANCE_PORT
         value: "80"
+      # LangSmith Monitoring Configuration
+      - name: LANGCHAIN_TRACING_V2
+        value: "true"
+      - name: LANGCHAIN_ENDPOINT
+        value: "http://langsmith-service:8000"
+      - name: LANGCHAIN_API_KEY
+        value: "dev-api-key"
+      - name: LANGCHAIN_PROJECT
+        value: "agentic-on-eks"
     oauth:
       enabled: false  # Disabled for demo mode
     resources:

@@ -21,6 +21,9 @@ from crewai import Agent, Task, Crew, Process, LLM
 from crewai.tools import tool
 from crewai.memory.external.external_memory import ExternalMemory
 
+# LangSmith tracing import - this enables automatic tracing when environment variables are set
+import langsmith
+
 # MCP imports - wrapped in try/except to handle case when packages are not available
 try:
     from mcp import StdioServerParameters
@@ -331,15 +334,16 @@ def create_hr_agent():
                         logger.error(f"Error getting public holidays: {str(e)}")
                         return {"error": str(e), "summary": "Unable to retrieve public holidays", "count": 0}
                 
-                # Create a proper CrewAI tool
-                public_holiday_tool = Tool(
-                    name="GetPublicHolidays",
-                    description="Get public holidays for a specific year and country. Use this to find out how many public holidays there are in a given year and country.",
-                    func=get_public_holidays_func
-                )
+                # Create a proper CrewAI tool using the decorator
+                @tool("GetPublicHolidays")
+                def get_public_holidays_tool(year: int = 2025, country_code: str = "US"):
+                    """
+                    Get public holidays for a specific year and country. Use this to find out how many public holidays there are in a given year and country.
+                    """
+                    return get_public_holidays_func(year, country_code)
                 
                 # Add the tool to our list
-                public_holiday_tools = [public_holiday_tool]
+                public_holiday_tools = [get_public_holidays_tool]
                 logger.info(f"Successfully initialized public holiday tool")
             else:
                 logger.warning(f"MCP server file not found at {server_path}. Public holiday information will not be available.")

@@ -73,13 +73,23 @@ class AdminAgentTaskManager(DefaultRequestHandler):
             result = await self.agent.process_query(query, "default-user")
             logger.info(f"Admin agent response: {result[:100]}...")
             
+            # Ensure result is a string
+            if isinstance(result, dict):
+                if 'response' in result:
+                    result_text = result['response']
+                else:
+                    result_text = str(result)
+            elif isinstance(result, str):
+                result_text = result
+            else:
+                result_text = str(result)
+            
             # Create response message
             import uuid
             response_message = Message(
                 messageId=str(uuid.uuid4()),
                 role=Role.agent,
-                parts=[Part(root=TextPart(kind='text', text=result))],
-                contextId=getattr(params.message, 'contextId', None)
+                parts=[Part(root=TextPart(kind='text', text=result_text))]
             )
             
             return response_message
@@ -92,8 +102,7 @@ class AdminAgentTaskManager(DefaultRequestHandler):
             error_message = Message(
                 messageId=str(uuid.uuid4()),
                 role=Role.agent,
-                parts=[Part(root=TextPart(kind='text', text=f"Error processing request: {str(e)}"))],
-                contextId=getattr(params.message, 'contextId', None)
+                parts=[Part(root=TextPart(kind='text', text=f"Error processing request: {str(e)}"))]
             )
             
             return error_message
