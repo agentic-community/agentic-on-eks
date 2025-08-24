@@ -47,7 +47,7 @@ def main(host: str, port: int, agentservice: str, agentport: int):
     finance_port = int(os.getenv("FINANCE_PORT", "80"))
     finance_url = f"http://{finance_host}:{finance_port}"
     logger.info(f"HR URL: {hr_url}")
-    prilogger.infont(f"Finance URL: {finance_url}")
+    logger.info(f"Finance URL: {finance_url}")
 
 
     a2a_client_tool_provider = A2AClientToolProvider(known_agent_urls=[hr_url, finance_url])
