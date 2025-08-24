@@ -7,6 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHARTS_DIR="$SCRIPT_DIR/charts"
 ENVIRONMENTS_DIR="$SCRIPT_DIR/environments"
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # Default values
 RELEASE_NAME="agents"

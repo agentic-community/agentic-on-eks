@@ -5,22 +5,28 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "admin"
 version = "0.1.0"
-description = "Admin/Supervisor agent for routing queries to HR and Finance agents"
+description = "Admin/Supervisor agent using Strands for orchestrating HR and Finance agents"
 requires-python = ">=3.11"
 dependencies = [
-    "a2a>=0.44",
-    "a2a-sdk>=0.2.5",
-    "a2a-server>=0.1.0",
+    "a2a-sdk>=0.3.2",
     "boto3>=1.28.64",
     "click>=8.1.8",
     "fastapi>=0.104.1",
     "httpx>=0.25.0",
-    "langchain>=0.0.335",
-    "langchain-aws>=0.2.23",
+    "langchain>=0.3.27",
+    "langchain-aws>=0.2.30",
     "pydantic>=2.7.2,<3.0.0",
     "python-dotenv>=1.0.0",
+    "requests>=2.25.0",
+    "strands-agents[a2a]>=1.4.0",
+    "strands-agents-tools>=0.2.3",
+    "strands-agents-builder>=0.1.7",
     "uvicorn>=0.23.2",
 ]
 
 [tool.setuptools]
-py-modules = ["admin_agent", "admin_agent_taskmanager"]
+py-modules = [
+    "strands_admin_simple", 
+    "strands_framework",
+    "oauth"
+]
