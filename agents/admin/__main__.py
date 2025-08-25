@@ -13,6 +13,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Enable info logging for A2AClientToolProvider
+a2a_logger = logging.getLogger('strands_tools.a2a_client')
+a2a_logger.setLevel(logging.INFO)
+
 SUPPORTED_CONTENT_TYPES = ['text', 'text/plain']
 
 
@@ -38,12 +42,12 @@ def main(host: str, port: int, agentservice: str, agentport: int):
         )]
 
     hr_host = os.getenv("HR_HOST", "hr-agent-service.default.svc.cluster.local")
-    logger.info("hr_host is:",hr_host)
+    logger.info(f"agent:mainhr_host is: {hr_host}")
     hr_port = int(os.getenv("HR_PORT", "80"))
     hr_url = f"http://{hr_host}:{hr_port}"
 
     finance_host = os.getenv("FINANCE_HOST", "finance-agent-service.default.svc.cluster.local")
-    logger.info("finance_host is:",finance_host)
+    logger.info(f"finance_host is: {finance_host}")
     finance_port = int(os.getenv("FINANCE_PORT", "80"))
     finance_url = f"http://{finance_host}:{finance_port}"
     logger.info(f"HR URL: {hr_url}")
@@ -52,7 +56,6 @@ def main(host: str, port: int, agentservice: str, agentport: int):
 
     a2a_client_tool_provider = A2AClientToolProvider(known_agent_urls=[hr_url, finance_url])
 
-    logger.info(f"a2a_client_tool_provider.tools is {a2a_client_tool_provider.tools}")
     # Create a Strands agent
     admin_agent = Agent(
         name="Admin agent",
