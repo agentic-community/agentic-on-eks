@@ -5,9 +5,7 @@ description = "HR agent for employee queries and vacation days using CrewAI"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "a2a>=0.44",
-    "a2a-sdk>=0.2.5",
-    "a2a-server>=0.1.0",
+    "a2a-sdk>=0.3.2",
     "boto3>=1.28.64",
     "click>=8.1.8",
     "crewai>=0.28.8",
@@ -23,6 +21,7 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "pyyaml>=6.0.1",
     "requests>=2.31.0",
-    "starlette>=0.20.0",
+    "sse-starlette>=2.3.5",
+    "starlette>=0.46.2",
     "uvicorn>=0.23.2",
 ]

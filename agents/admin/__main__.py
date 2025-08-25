@@ -53,12 +53,20 @@ def main(host: str, port: int, agentservice: str, agentport: int):
     logger.info(f"HR URL: {hr_url}")
     logger.info(f"Finance URL: {finance_url}")
 
+    known_agent_urls=[hr_url, finance_url]
 
-    a2a_client_tool_provider = A2AClientToolProvider(known_agent_urls=[hr_url, finance_url])
+    a2a_client_tool_provider = A2AClientToolProvider(known_agent_urls=known_agent_urls)
+    
 
     # Create a Strands agent
     admin_agent = Agent(
         name="Admin agent",
+        system_prompt=("""
+        You are a orchestrator agent for this agentic system, for simple prompts, you pass the users prompt to the right agent.
+        for complex prompts that need coordination across multiple agents , you use workflows to manage that.
+        Use tools to gather the information and agent cards about the available a2a servers and send the requests to the appropriate a2a
+        server"""
+    ),
         description="An orchestrator agent",
         tools=[a2a_client_tool_provider.tools],
         callback_handler=None
@@ -67,7 +75,7 @@ def main(host: str, port: int, agentservice: str, agentport: int):
     # Create A2A server (streaming enabled by default)
     a2a_server = A2AServer(
         agent=admin_agent,
-        host="0.0.0.0", port="8080",
+        host="0.0.0.0", port=8080,
         http_url="http://{agentservice}:{agentport}/" ,
         skills = admin_skills
      )

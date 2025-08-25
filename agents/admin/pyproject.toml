@@ -8,8 +8,7 @@ version = "0.1.0"
 description = "Admin/Supervisor agent using Strands for orchestrating HR and Finance agents"
 requires-python = ">=3.11"
 dependencies = [
-    "a2a>=0.44",
-    "a2a-sdk>=0.3.1",
+    "a2a-sdk>=0.3.2",
     "boto3>=1.28.64",
     "click>=8.1.8",
     "fastapi>=0.104.1",
