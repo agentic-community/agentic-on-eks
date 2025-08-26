@@ -7,9 +7,11 @@ RUN pip install uv
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    g++ \
     python3-dev \
     git \
     sqlite3 \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Create finance agent directory
