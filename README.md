@@ -28,7 +28,7 @@ graph TB
         end
         
         subgraph "Agent Layer"
-            Admin["🎯 Admin Agent<br/>(A2A Client)<br/>"]
+            Admin["🎯 Admin Agent<br/>(Strands + A2A Server/Client)<br/>"]
             HR["👥 HR Agent<br/>(A2A Server)<br/>"]
             Finance["💰 Finance Agent<br/>(A2A Server)<br/>"]
         end
@@ -58,7 +58,7 @@ graph TB
     Finance <-->|"Finance Data"| FinDB
     HR <-->|"Holiday Data"| MCP
     MCP <-->|"API Call"| Nager
-    Admin <-->|"LLM Routing"| Bedrock
+    Admin <-->|"Strands Framework"| Bedrock
     HR <-->|"CrewAI Tasks"| Bedrock
     Finance <-->|"LangGraph Flow"| Bedrock
     
@@ -86,17 +86,18 @@ graph TB
 - **Features**: Interactive chat interface with agent communication
 
 #### 🎯 Admin Agent (Supervisor & Router)
-- **Framework**: A2A SDK + LangChain
-- **AI Model**: Uses Amazon Bedrock as Model Provider
+- **Framework**: Strands Agent Framework with A2A support
 - **Features**:
-  - 🧠 LLM-powered intelligent query routing
-  - 🔄 Fallback keyword-based routing for reliability
-  - 🔗 A2A client for downstream agent communication
-  - 🔐 OAuth client credentials flow for secure inter-agent communication
+  - 🧠 **Strands-powered orchestration**: Intelligent multi-agent coordination
+  - 🔄 **Dynamic routing**: Context-aware query distribution to specialized agents
+  - 🔗 **A2A Protocol**: Full Agent-to-Agent communication with service discovery
+  - 📋 **Agent discovery**: Auto-discovers HR and Finance agents via `.well-known/agent.json`
+  - 🔐 **OAuth security**: Client credentials flow for secure inter-agent communication
+  - 🎭 **Skill-based routing**: Routes queries based on agent capabilities and skills
 
 
 #### 👥 HR Agent (Employee Assistant)
-- **Framework**: CrewAI + A2A SDK
+- **Framework**: CrewAI + A2A Support
 - **Database**: SQLite
 - **Features**:
   - 📋 Employee directory and information management
@@ -106,7 +107,7 @@ graph TB
 
 
 #### 💰 Finance Agent (Financial Assistant)  
-- **Framework**: LangGraph + A2A SDK
+- **Framework**: LangGraph + A2A Support
 - **Database**: SQLite with pre-populated financial data
 - **Features**:
   - 💵 Salary and compensation analysis
@@ -298,15 +299,98 @@ kubectl port-forward svc/agents-ui-app-service 8501:80
 ./deploy-helm.sh -m secure -a upgrade
 ```
 
+## 🔍 Validating Agents with A2A Inspector
 
+The platform's agents implement the A2A (Agent-to-Agent) protocol and can be validated using the [A2A Inspector](https://github.com/a2aproject/a2a-inspector) tool.
+
+### What is A2A Inspector?
+
+A2A Inspector is a web-based debugging tool that helps developers:
+- 🔎 Inspect agent capabilities via `.well-known/agent.json` endpoints
+- ✅ Validate A2A protocol compliance
+- 💬 Test agent interactions with live chat
+- 🐛 Debug JSON-RPC 2.0 message exchanges
+
+### Setting up A2A Inspector
+
+```bash
+# Clone and install A2A Inspector
+git clone https://github.com/a2aproject/a2a-inspector.git
+cd a2a-inspector
+
+# Install dependencies
+uv sync  # Python dependencies
+cd frontend && npm install && cd ..  # Frontend dependencies
+
+# Run the inspector
+./run.sh
+# Access at http://localhost:5173
+```
+
+### Validating A2A Agents
+
+1. **Port-forward the agent services** (if running in Kubernetes):
+```bash
+# Admin agent (use port 8081 to avoid conflicts)
+kubectl port-forward svc/agents-admin-agent-service 8081:8080
+
+# HR agent
+kubectl port-forward svc/agents-hr-agent-service 9999:80
+
+# Finance agent
+kubectl port-forward svc/agents-finance-agent-service 8888:80
+```
+
+2. **Connect to agents in A2A Inspector**:
+   - Admin Agent: `http://localhost:8081`
+   - HR Agent: `http://localhost:9999`
+   - Finance Agent: `http://localhost:8888`
+
+3. **Validate agent cards**:
+   - Inspector automatically fetches `.well-known/agent.json`
+   - Displays agent capabilities, skills, and supported protocols
+   - Shows compliance with A2A specification
+
+### What You Can Validate
+
+- **Agent Discovery**: Verify agent metadata and capabilities
+- **Skills & Examples**: Review each agent's advertised skills
+- **Protocol Compliance**: Check A2A protocol version and transport methods
+- **Security Schemes**: Inspect OAuth configuration (in secure mode)
 
 ## 🧪 Testing Agent Communication
 
-The platform supports intelligent query routing to specialized agents:
+After deploying the platform with Helm, you can test the multi-agent system through the UI application.
 
-### 👥 HR Sample Queries (→ HR Agent)
+### Accessing the UI Application
 
+1. **Port-forward the UI service** to access it locally:
 ```bash
+kubectl port-forward svc/agents-ui-app-service 8501:80
+```
+
+2. **Open your browser** to [http://localhost:8501](http://localhost:8501)
+
+3. **Authentication**:
+   - **Demo mode**: No login required - start chatting immediately
+   - **Secure mode**: Login with your Okta credentials
+
+### How the System Works
+
+When you send a query through the UI:
+
+1. **UI → Admin Agent**: Your message is sent to the Admin Agent (orchestrator)
+2. **Admin Agent Analysis**: Using Strands Framework, it analyzes your query to determine the appropriate agent
+3. **Routing Decision**: Routes to HR Agent for employee/vacation queries, or Finance Agent for salary/compensation queries
+4. **Agent Processing**: The specialized agent processes the request using its framework (CrewAI for HR, LangGraph for Finance)
+5. **Response Flow**: The response flows back through Admin Agent to the UI
+
+### Sample Test Queries
+
+#### 👥 HR Agent Sample Queries
+Test these queries to verify HR Agent functionality:
+
+```
 💬 "What is the name of employee EMP0002?"
 # → Retrieves employee information from HR database
 
@@ -314,11 +398,61 @@ The platform supports intelligent query routing to specialized agents:
 # → Calculates remaining days based on policy, usage, and carryover
 ```
 
-### 💰 Finance Queries (→ Finance Agent)
+#### 💰 Finance Agent Sample Queries
+Test these queries to verify Finance Agent functionality:
 
-```bash
+```
 💬 "What is the annual salary of employee EMP0003?"
 # → Retrieves salary and compensation details
+
+💬 "Calculate leave deduction for 5 days off for EMP0002"
+# → Computes salary impact of taking leave
+```
+
+### Monitoring Agent Communication
+
+To see the agent communication in action:
+
+1. **View Admin Agent logs**:
+```bash
+kubectl logs -l app.kubernetes.io/name=admin-agent -f
+```
+
+2. **View HR Agent logs**:
+```bash
+kubectl logs -l app.kubernetes.io/name=hr-agent -f
+```
+
+3. **View Finance Agent logs**:
+```bash
+kubectl logs -l app.kubernetes.io/name=finance-agent -f
+```
+
+### Troubleshooting
+
+If queries aren't working:
+
+1. **Check all pods are running**:
+```bash
+kubectl get pods -l app.kubernetes.io/instance=agents
+```
+
+2. **Verify services are accessible**:
+```bash
+kubectl get svc -l app.kubernetes.io/instance=agents
+```
+
+3. **Check agent cards are returning valid responses**:
+```bash
+# Port-forward and verify each agent's discovery endpoint
+kubectl port-forward svc/agents-admin-agent-service 8080:8080
+curl http://localhost:8080/.well-known/agent.json
+
+kubectl port-forward svc/agents-hr-agent-service 9999:80
+curl http://localhost:9999/.well-known/agent.json
+
+kubectl port-forward svc/agents-finance-agent-service 8888:80
+curl http://localhost:8888/.well-known/agent.json
 ```
 
 ## 📚 Additional Documentation
