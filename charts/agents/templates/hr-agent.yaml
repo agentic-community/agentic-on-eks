@@ -60,7 +60,12 @@ spec:
         {{- end }}
         {{- range index .Values.agents "hr-agent" "env" }}
         - name: {{ .name }}
+          {{- if .valueFrom }}
+          valueFrom:
+            {{- toYaml .valueFrom | nindent 12 }}
+          {{- else }}
           value: {{ .value | quote }}
+          {{- end }}
         {{- end }}
         {{- with index .Values.agents "hr-agent" "volumeMounts" }}
         volumeMounts:

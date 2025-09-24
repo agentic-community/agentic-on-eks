@@ -15,8 +15,9 @@ RUN apt-get update && apt-get install -y \
 # Install uv for fast Python package management
 RUN pip install uv
 
-COPY pyproject.toml uv.lock ./
-COPY *.py ./
+COPY agents/admin/pyproject.toml agents/admin/uv.lock ./
+COPY agents/admin/*.py ./
+COPY common/ ./common/
 
 
 

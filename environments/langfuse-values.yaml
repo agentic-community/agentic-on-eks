@@ -1,0 +1,83 @@
+# LangFuse-specific environment variables
+# This file contains the LangFuse configuration that gets merged when LangFuse is enabled
+
+agents:
+  admin-agent:
+    env:
+      - name: BEDROCK_MODEL_ID
+        value: "anthropic.claude-3-sonnet-20240229-v1:0"
+      - name: HR_HOST
+        value: "agents-hr-agent-service.default.svc.cluster.local"
+      - name: HR_PORT
+        value: "80"
+      - name: FINANCE_HOST
+        value: "agents-finance-agent-service.default.svc.cluster.local"
+      - name: FINANCE_PORT
+        value: "80"
+      - name: LANGFUSE_PUBLIC_KEY
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-credentials
+            key: LANGFUSE_PUBLIC_KEY
+      - name: LANGFUSE_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-credentials
+            key: LANGFUSE_SECRET_KEY
+      - name: LANGFUSE_HOST
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-credentials
+            key: LANGFUSE_HOST
+
+  hr-agent:
+    env:
+      - name: PORT
+        value: "8000"
+      - name: LOG_LEVEL
+        value: "INFO"
+      - name: SQLITE_DB_PATH
+        value: "/app/data/hr_database.sqlite"
+      - name: MCP_SERVER_PATH
+        value: "/app/mcp_server"
+      - name: PUBLIC_HOLIDAY_SERVER_FNAME
+        value: "nager_mcp_server.py"
+      - name: MEM0_API_KEY
+        value: ""
+      - name: LANGFUSE_PUBLIC_KEY
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-credentials
+            key: LANGFUSE_PUBLIC_KEY
+      - name: LANGFUSE_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-credentials
+            key: LANGFUSE_SECRET_KEY
+      - name: LANGFUSE_HOST
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-credentials
+            key: LANGFUSE_HOST
+
+  finance-agent:
+    env:
+      - name: PORT
+        value: "8888"
+      - name: LOG_LEVEL
+        value: "INFO"
+      - name: LANGFUSE_PUBLIC_KEY
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-credentials
+            key: LANGFUSE_PUBLIC_KEY
+      - name: LANGFUSE_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-credentials
+            key: LANGFUSE_SECRET_KEY
+      - name: LANGFUSE_HOST
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-credentials
+            key: LANGFUSE_HOST
