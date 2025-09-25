@@ -1,10 +1,14 @@
 import logging
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from strands import Agent
 import click
 from a2a.types import AgentSkill
 from strands.multiagent.a2a import A2AServer
 from oauth_a2a_client import OAuthA2AClientToolProvider
+from common.utils.langfuse_config import get_langfuse_client, is_langfuse_enabled
 
 
 # Configure logging
@@ -57,6 +61,13 @@ def main(host: str, port: int, agentservice: str, agentport: int):
 
     a2a_client_tool_provider = OAuthA2AClientToolProvider(known_agent_urls=known_agent_urls)
     
+    # Initialize LangFuse observability
+    langfuse_client = None
+    if is_langfuse_enabled():
+        langfuse_client = get_langfuse_client()
+        logger.info("LangFuse observability enabled for Admin Agent")
+    else:
+        logger.info("LangFuse observability disabled")
 
     # Create a Strands agent
     admin_agent = Agent(

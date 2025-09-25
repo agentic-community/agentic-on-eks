@@ -12,6 +12,7 @@ dependencies = [
     "fastapi>=0.104.1",
     "httpx>=0.25.0",
     "langgraph>=0.4.1",
+    "langfuse>=2.56.0",
     "mcp>=1.6.0",
     "mcpadapt>=0.1.0",
     "mem0ai>=0.1.97",

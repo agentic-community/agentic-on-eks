@@ -177,6 +177,16 @@ update_dependencies() {
     print_success "Dependencies updated"
 }
 
+# Function to check if LangFuse is enabled in Terraform
+check_langfuse_enabled() {
+    # Check if LangFuse secret exists (indicates LangFuse is deployed)
+    if kubectl get secret langfuse-credentials -n default >/dev/null 2>&1; then
+        return 0  # LangFuse is enabled
+    else
+        return 1  # LangFuse is not enabled
+    fi
+}
+
 # Function to install/upgrade the platform
 deploy_platform() {
     local helm_action="$1"
@@ -194,6 +204,15 @@ deploy_platform() {
         kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
     fi
     
+    # Check if LangFuse is enabled
+    local langfuse_values_args=""
+    if check_langfuse_enabled; then
+        print_info "LangFuse observability detected - enabling LangFuse integration"
+        langfuse_values_args="--values $ENVIRONMENTS_DIR/langfuse-values.yaml"
+    else
+        print_info "LangFuse not detected - deploying without observability"
+    fi
+    
     # Deploy using Helm based on mode
     if [ "$MODE" = "demo" ]; then
         # For demo mode, use the demo-values.yaml override
@@ -202,6 +221,7 @@ deploy_platform() {
             print_info "Deploying in demo mode (no authentication)"
             helm $helm_action "$RELEASE_NAME" "$CHARTS_DIR/agents" \
                 --values "$demo_values_file" \
+                $langfuse_values_args \
                 --namespace "$NAMESPACE" \
                 --set global.aws.accountId="$ACCOUNT_ID" \
                 --wait \
@@ -237,6 +257,7 @@ EOF
         
         helm $helm_action "$RELEASE_NAME" "$CHARTS_DIR/agents" \
             --values "$temp_values_file" \
+            $langfuse_values_args \
             --namespace "$NAMESPACE" \
             --wait \
             --timeout 10m

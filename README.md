@@ -270,6 +270,12 @@ export OKTA_UI_CLIENT_SECRET=your-ui-secret
 export OKTA_REDIRECT_URI=http://localhost:8501  # Optional
 ```
 
+## 🔍 Monitoring & Observability
+
+> **Note**: The infrastructure automatically deploys a **self-hosted LangFuse cluster** on EKS for comprehensive observability. All agents are pre-configured with LangFuse integration and are ready to send traces immediately upon deployment.
+
+For detailed setup, configuration, and usage instructions, see the **[Monitoring Guide](docs/monitoring.md)**.
+
 ### Deploy in Secure Mode
 
 ```bash
@@ -458,6 +464,7 @@ curl http://localhost:8888/.well-known/agent.json
 ## 📚 Additional Documentation
 
 - 🔐 [Authentication Setup](docs/auth.md)
+- 📊 [Monitoring & Observability](docs/monitoring.md)
 
 ## 📄 License
 

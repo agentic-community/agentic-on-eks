@@ -13,3 +13,13 @@ cluster_name = "my-agentic-cluster"
 # This is a sensitive value - keep it secure
 # Obtain your API key from: https://mem0.ai
 mem0_api_key = ""
+
+# Enable LangFuse observability platform
+# Set to true to deploy LangFuse with PostgreSQL and Redis
+# Default: false
+enable_langfuse = true
+enable_langfuse_persistence = false
+
+# Add the keys to terraform.tfvars
+langfuse_public_key = "pk-lf-your_public_langfuse_key"
+langfuse_secret_key = "sk-lf-your_langfuse_secret_key"

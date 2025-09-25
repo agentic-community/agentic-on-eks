@@ -64,7 +64,12 @@ spec:
         {{- end }}
         {{- range index .Values.agents "admin-agent" "env" }}
         - name: {{ .name }}
+          {{- if .valueFrom }}
+          valueFrom:
+            {{- toYaml .valueFrom | nindent 12 }}
+          {{- else }}
           value: {{ .value | quote }}
+          {{- end }}
         {{- end }}
         resources:
           {{- toYaml (index .Values.agents "admin-agent" "resources") | nindent 10 }}

@@ -18,7 +18,7 @@ agents:
     nameOverride: "admin-agent"
     replicaCount: 1
     image:
-      repository: "admin-agent"
+      repository: "agentic-on-eks-admin-agent"
       tag: "latest"
       pullPolicy: Always
     service:
@@ -52,7 +52,7 @@ agents:
     nameOverride: "hr-agent"
     replicaCount: 1
     image:
-      repository: "hr-agent"
+      repository: "agentic-on-eks-hr-agent"
       tag: "latest"
       pullPolicy: Always
     service:
@@ -94,7 +94,7 @@ agents:
     nameOverride: "finance-agent"
     replicaCount: 1
     image:
-      repository: "finance-agent"
+      repository: "agentic-on-eks-finance-agent"
       tag: "latest"
       pullPolicy: Always
     service:
@@ -122,7 +122,7 @@ ui:
   enabled: true
   replicaCount: 1
   image:
-    repository: "ui-app"
+    repository: "agentic-on-eks-ui-app"
     tag: "latest"
     pullPolicy: Always
   service:

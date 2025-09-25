@@ -15,6 +15,7 @@ dependencies = [
     "langchain-aws>=0.2.23",
     "langchain-community>=0.0.10",
     "langgraph>=0.0.21",
+    "langfuse>=2.56.0",
     "mem0ai>=0.1.97",
     "numpy>=1.26.1",
     "pandas>=2.1.1",

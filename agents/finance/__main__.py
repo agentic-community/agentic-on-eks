@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 # Import OAuth middleware
 from common.server.oauth_middleware import configure_oauth_middleware
+from common.utils.langfuse_config import get_langfuse_client, is_langfuse_enabled
 
 # [OKTA] Skipped loading Okta environment variables and OAuth config
 # try:
@@ -145,6 +146,14 @@ def main(host: str, port: int, agentservice: str, agentport: int, enable_oauth: 
     )
 
 
+
+    # Initialize LangFuse observability
+    langfuse_client = None
+    if is_langfuse_enabled():
+        langfuse_client = get_langfuse_client()
+        logger.info("LangFuse observability enabled for Finance Agent")
+    else:
+        logger.info("LangFuse observability disabled")
 
     # Create task manager
     task_manager = FinanceAgentTaskManager(

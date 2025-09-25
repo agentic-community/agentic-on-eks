@@ -223,16 +223,16 @@ get_component_details() {
     local component="$1"
     case $component in
         admin)
-            echo "agents/admin admin-agent false"
+            echo "agents/admin agentic-on-eks-admin-agent true"
             ;;
         hr)
-            echo "agents/hr hr-agent true"
+            echo "agents/hr agentic-on-eks-hr-agent true"
             ;;
         finance)
-            echo "agents/finance finance-agent true"
+            echo "agents/finance agentic-on-eks-finance-agent true"
             ;;
         ui)
-            echo "ui ui-app false"
+            echo "ui agentic-on-eks-ui-app false"
             ;;
         *)
             print_error "Unknown component: $component"
